@@ -1,0 +1,185 @@
+---
+description: Pico CSS patterns and anti-patterns for minimal custom CSS
+globs: "*.html,*.css,app/templates/**"
+---
+
+# Pico CSS Patterns
+
+## Core Philosophy
+**Write semantic HTML, let Pico handle the styling.** If you're adding custom CSS, you're probably doing it wrong.
+
+## What Pico Provides Automatically
+
+### Containers
+`<header>`, `<main>`, and `<footer>` as direct children of `<body>` act as containers:
+```html
+<body>
+    <header class="container">...</header>  <!-- Add .container for consistent spacing -->
+    <main class="container">...</main>
+    <footer class="container">...</footer>
+</body>
+```
+
+### Navigation Spacing
+Multiple `<ul>` in `<nav>` are automatically spaced apart:
+```html
+<nav>
+    <ul><!-- Left side --></ul>
+    <ul><!-- Right side --></ul>
+</nav>
+```
+
+### Form Styling
+All form elements are styled automatically:
+- Inputs are 100% width by default
+- Buttons match input height
+- Labels, inputs, and buttons need NO classes
+- `<small>` below inputs becomes helper text
+
+### Grid System
+`.grid` creates responsive columns:
+```html
+<div class="grid">
+    <div>Auto-sized column</div>
+    <div>Auto-sized column</div>
+</div>
+```
+
+### Loading States
+Use `aria-busy="true"` for automatic loading spinners:
+```html
+<button aria-busy="true">Loading...</button>
+```
+
+### Validation States
+Use `aria-invalid` for validation styling:
+```html
+<input aria-invalid="true" />  <!-- Red border -->
+<input aria-invalid="false" /> <!-- Green border -->
+```
+
+## Available Utility Classes (Use Sparingly!)
+
+### Link/Button Variants
+- `.secondary` - Secondary style
+- `.contrast` - High contrast style
+- `.outline` - Outline style
+- `role="button"` - Makes links look like buttons
+
+### NO Custom CSS Needed For:
+- ❌ Navigation alignment (`margin-left: auto`, etc.)
+- ❌ Form spacing (`margin: 0`)
+- ❌ Center content (`.center-content`)
+- ❌ Loading indicators (`.htmx-indicator`)
+- ❌ Container width
+- ❌ Typography
+- ❌ Colors (use CSS variables if needed)
+- ❌ Responsive design
+
+## Semantic HTML Patterns
+
+### Articles/Cards
+```html
+<article>
+    <header>
+        <h3>Title</h3>
+    </header>
+    <p>Content</p>
+    <footer>
+        <button>Action</button>
+    </footer>
+</article>
+```
+
+### Definition Lists
+```html
+<dl>
+    <dt>Term</dt>
+    <dd>Definition</dd>
+</dl>
+```
+
+### Grouped Headings
+```html
+<hgroup>
+    <h1>Main Title</h1>
+    <p>Subtitle or description</p>
+</hgroup>
+```
+
+### Sections
+```html
+<section>
+    <h2>Section Title</h2>
+    <!-- Content -->
+</section>
+```
+
+## Theme Support
+
+### Data Attributes
+```html
+<html data-theme="light">  <!-- or "dark" -->
+```
+
+### CSS Variables to Override (Only if Necessary)
+```css
+:root {
+    --pico-primary: #custom-color;
+    --pico-primary-hover: #custom-hover;
+}
+```
+
+## Common Mistakes We Fixed
+
+### ❌ WRONG: Custom navigation CSS
+```css
+nav ul li[data-align="right"] {
+    margin-left: auto;
+}
+```
+### ✅ RIGHT: Use multiple `<ul>` (Pico spaces them automatically)
+
+### ❌ WRONG: Custom center class
+```css
+.center-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+```
+### ✅ RIGHT: Use semantic containers and articles
+
+### ❌ WRONG: Form in navigation for button
+```html
+<li>
+    <form style="margin: 0;">
+        <button>Logout</button>
+    </form>
+</li>
+```
+### ✅ RIGHT: Button directly in navigation
+```html
+<li>
+    <button>Logout</button>
+</li>
+```
+
+### ❌ WRONG: Custom HTMX loading CSS
+```css
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: block; }
+```
+### ✅ RIGHT: Use Pico's aria-busy
+```html
+<button aria-busy="true">Loading...</button>
+```
+
+## Rule of Thumb
+**If you need more than 10 lines of custom CSS, you're not using Pico correctly.**
+
+Current project has only:
+1. Theme toggle button positioning (legitimately custom UI element)
+2. Nothing else!
+
+That's how Pico CSS should be used.

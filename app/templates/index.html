@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Home - FastAPI Auth App{% endblock %}
+
+{% block content %}
+<article>
+    <header>
+        <hgroup>
+            <h1>Welcome to FastAPI Auth</h1>
+            <p>A modern authentication system built with FastAPI, JWT tokens, and a beautiful UI</p>
+        </hgroup>
+    </header>
+    
+    <section>
+        <h2>Features</h2>
+        <ul>
+            <li>🔐 Secure JWT-based authentication</li>
+            <li>🚀 Fast and modern Python backend</li>
+            <li>🎨 Clean UI with Pico CSS</li>
+            <li>⚡ Dynamic updates with HTMX</li>
+            <li>🛡️ Password hashing with bcrypt</li>
+            <li>📱 Responsive design</li>
+        </ul>
+    </section>
+    
+    <footer>
+        {% if not user %}
+            <div class="grid">
+                <a href="/login" role="button">Get Started</a>
+                <a href="/login" role="button" class="outline">Sign In</a>
+            </div>
+        {% else %}
+            <a href="/dashboard" role="button">Go to Dashboard</a>
+        {% endif %}
+    </footer>
+</article>
+
+<section>
+    <h2>How It Works</h2>
+    <div class="grid">
+        <article>
+            <header>
+                <h3>1. Register</h3>
+            </header>
+            <p>Create your account with a username, email, and secure password.</p>
+        </article>
+        
+        <article>
+            <header>
+                <h3>2. Login</h3>
+            </header>
+            <p>Sign in with your credentials to receive a secure JWT token.</p>
+        </article>
+        
+        <article>
+            <header>
+                <h3>3. Access</h3>
+            </header>
+            <p>Use your token to access protected resources and manage your profile.</p>
+        </article>
+    </div>
+</section>
+{% endblock %}

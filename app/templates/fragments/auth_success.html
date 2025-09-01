@@ -1,0 +1,14 @@
+<div id="auth-message" class="container">
+    <article>
+        <mark style="background-color: var(--ins-color); color: var(--ins-text);">
+            Success! Redirecting...
+        </mark>
+    </article>
+</div>
+
+<script>
+    // Redirect after a short delay
+    setTimeout(function() {
+        window.location.href = "{{ redirect_url }}";
+    }, 1000);
+</script>

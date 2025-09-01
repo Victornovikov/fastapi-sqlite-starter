@@ -1,0 +1,61 @@
+---
+alwaysApply: true
+---
+
+# FastAPI Web UI Architecture
+
+This FastAPI application serves both a RESTful API and a web UI using server-side rendering.
+
+## Project Structure
+
+```
+app/
+├── routers/
+│   ├── auth.py       # API authentication endpoints (JSON)
+│   ├── users.py      # API user management endpoints (JSON)
+│   └── ui.py         # Web UI routes (HTML)
+├── templates/
+│   ├── base.html     # Base template with nav/footer
+│   ├── auth.html     # Login/signup page
+│   ├── dashboard.html # User dashboard
+│   ├── profile.html  # User profile
+│   └── fragments/    # HTMX partial templates
+├── templates_config.py # Jinja2Blocks configuration
+├── auth.py           # Authentication logic
+└── main.py          # App setup with middleware
+```
+
+## Key Components
+
+### Dual Interface
+- **API Routes** (`/auth/*`, `/users/*`) - Return JSON for API clients
+- **UI Routes** (`/`, `/login`, `/dashboard`, `/profile`) - Return HTML for browsers
+
+### Authentication
+- **Web UI**: JWT stored in httpOnly cookies, checked via `get_current_user_optional`
+- **API**: JWT in Authorization header, checked via `get_current_user`
+
+### Templates
+- All pages extend `base.html` using Jinja2
+- Fragments in `templates/fragments/` for HTMX partial updates
+- Configuration in [templates_config.py](mdc:app/templates_config.py)
+
+### Tech Stack
+- **FastAPI** + **SQLModel** - Backend and ORM
+- **Jinja2** + **jinja2-fragments** - Templates
+- **Pico CSS** - Semantic, classless styling
+- **HTMX** - Dynamic interactions without JavaScript
+
+## Adding Features
+
+### New Page
+1. Create template in `app/templates/pagename.html`
+2. Add route in `app/routers/ui.py`
+3. Use `get_current_user_optional` dependency for auth
+
+### HTMX Interaction
+1. Create fragment in `app/templates/fragments/`
+2. Add endpoint returning fragment
+3. Use `hx-*` attributes on trigger element
+
+See [web-ui-stack.mdc](mdc:.cursor/rules/web-ui-stack.mdc) for detailed guidelines.

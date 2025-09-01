@@ -1,0 +1,225 @@
+---
+description: HTMX integration patterns and best practices for FastAPI applications
+globs: "*.html,app/templates/**,app/routers/*.py"
+---
+
+# HTMX Integration Patterns
+
+## Core Principle
+HTMX enhances HTML with AJAX capabilities. Use it for **partial updates**, not full page navigation.
+
+## When to Use HTMX vs Regular Links
+
+### ✅ Use HTMX For:
+1. **Form Submissions**
+   ```html
+   <form hx-post="/auth/login" hx-target="#message">
+       <!-- Login without page reload -->
+   </form>
+   ```
+
+2. **Actions Without Navigation**
+   ```html
+   <button hx-post="/logout">Logout</button>
+   ```
+
+3. **Loading Fragments**
+   ```html
+   <div hx-get="/fragments/stats" hx-trigger="load">
+       <!-- Load content on page load -->
+   </div>
+   ```
+
+4. **Updating Specific Page Sections**
+   ```html
+   <button hx-get="/api/refresh" hx-target="#data-table">
+       Refresh Data
+   </button>
+   ```
+
+### ❌ Don't Use HTMX For:
+1. **Regular Navigation**
+   ```html
+   <!-- WRONG -->
+   <a href="/profile" hx-get="/profile" hx-target="main">Profile</a>
+   
+   <!-- RIGHT -->
+   <a href="/profile">Profile</a>
+   ```
+
+2. **Full Page Replacements**
+   - Causes duplicate headers/footers
+   - Breaks browser history
+   - Loses scroll position
+
+## Common HTMX Attributes
+
+### Essential Attributes
+- `hx-get/post/put/delete` - HTTP method and endpoint
+- `hx-target` - Where to put the response
+- `hx-trigger` - When to trigger the request
+- `hx-swap` - How to swap content (innerHTML, outerHTML, etc.)
+
+### Target Patterns
+```html
+<!-- Target by ID -->
+<div hx-target="#message-container">
+
+<!-- Target itself -->
+<div hx-target="this">
+
+<!-- Target closest parent -->
+<div hx-target="closest article">
+```
+
+### Trigger Patterns
+```html
+<!-- On click (default for buttons) -->
+<button hx-post="/action">Click Me</button>
+
+<!-- On page load -->
+<div hx-get="/data" hx-trigger="load">
+
+<!-- On form change -->
+<select hx-get="/filter" hx-trigger="change">
+
+<!-- With delay -->
+<input hx-get="/search" hx-trigger="keyup changed delay:500ms">
+```
+
+## FastAPI Integration
+
+### Return Fragments for HTMX
+```python
+@router.post("/auth/login")
+async def login(request: Request, ...):
+    if not valid:
+        # Return error fragment
+        return templates.TemplateResponse(
+            "fragments/auth_error.html",
+            {"request": request, "error": "Invalid credentials"}
+        )
+    
+    # Return success fragment
+    return templates.TemplateResponse(
+        "fragments/auth_success.html",
+        {"request": request, "redirect_url": "/dashboard"}
+    )
+```
+
+### Full Page vs Fragment Detection
+```python
+@router.get("/content")
+async def get_content(request: Request):
+    # Check if HTMX request
+    is_htmx = request.headers.get("HX-Request") == "true"
+    
+    if is_htmx:
+        # Return fragment
+        return templates.TemplateResponse(
+            "fragments/content.html",
+            {"request": request}
+        )
+    else:
+        # Return full page
+        return templates.TemplateResponse(
+            "content.html",
+            {"request": request}
+        )
+```
+
+## Form Patterns
+
+### Login Form with Error Display
+```html
+<form hx-post="/auth/login" hx-target="#auth-message">
+    <input type="text" name="username" required>
+    <input type="password" name="password" required>
+    <button type="submit">Login</button>
+</form>
+<div id="auth-message"></div>
+```
+
+### Success with Redirect
+```html
+<!-- fragments/auth_success.html -->
+<div>
+    <mark>Success! Redirecting...</mark>
+</div>
+<script>
+    setTimeout(() => {
+        window.location.href = "{{ redirect_url }}";
+    }, 1000);
+</script>
+```
+
+## Loading States with Pico CSS
+
+### Button Loading
+```html
+<!-- No custom CSS needed! -->
+<button hx-post="/action" 
+        class="htmx-request:aria-busy">
+    Submit
+</button>
+```
+
+### Or with JavaScript
+```html
+<button onclick="this.ariaBusy=true">
+    Process
+</button>
+```
+
+## Common Pitfalls
+
+### 1. Navigation Duplication
+**Problem**: Using `hx-target="main"` loads entire page into main element
+```html
+<!-- Creates duplicate nav and footer! -->
+<a hx-get="/page" hx-target="main">Link</a>
+```
+**Solution**: Use regular links for navigation
+
+### 2. Lost Form State
+**Problem**: Replacing entire form on error
+**Solution**: Target only message area
+```html
+<form hx-post="/submit" hx-target="#message">
+    <!-- Form stays intact, only message updates -->
+</form>
+<div id="message"></div>
+```
+
+### 3. Missing CSRF Protection
+**Problem**: Forms without CSRF tokens
+**Solution**: Add CSRF token to forms (if using CSRF protection)
+
+### 4. Broken Back Button
+**Problem**: Not using `hx-push-url` when needed
+**Solution**: Add for navigation-like updates
+```html
+<div hx-get="/page" hx-push-url="true">
+```
+
+## Testing HTMX Interactions
+
+```bash
+# Test form submission returns fragment
+curl -X POST http://localhost:8000/auth/login \
+  -H "HX-Request: true" \
+  -d "username=test&password=pass"
+
+# Test regular request returns full page
+curl http://localhost:8000/dashboard
+```
+
+## Best Practices
+
+1. **Progressive Enhancement**: Site should work without JavaScript
+2. **Semantic HTML**: Use proper form elements and buttons
+3. **Fragment Organization**: Keep fragments in `templates/fragments/`
+4. **Error Handling**: Always provide user feedback
+5. **Loading States**: Use Pico's `aria-busy` for consistency
+6. **Validation**: Combine client-side HTML5 validation with server-side
+7. **Security**: Validate all inputs server-side, use CSRF tokens

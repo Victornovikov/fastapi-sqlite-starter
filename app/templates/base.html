@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    
+    <title>{% block title %}FastAPI Auth App{% endblock %}</title>
+    
+    <!-- Pico CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Minimal custom styles -->
+    <style>
+        /* Theme toggle button - legitimately custom */
+        .theme-toggle {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 100;
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Header with Navigation -->
+    <header class="container">
+        <nav>
+            <ul>
+                <li><strong><a href="/">FastAPI Auth</a></strong></li>
+            </ul>
+            <ul>
+                {% if user %}
+                    <li>
+                        <a href="/profile">
+                            {{ user.username }}
+                        </a>
+                    </li>
+                    <li>
+                        <button hx-post="/logout" class="outline">Logout</button>
+                    </li>
+                {% else %}
+                    <li>
+                        <a href="/login" class="outline" role="button">Sign up</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+    
+    <!-- Main content -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="container">
+        <small>
+            Built with <a href="https://fastapi.tiangolo.com/" target="_blank">FastAPI</a> • 
+            <a href="https://picocss.com/" target="_blank">Pico CSS</a> • 
+            <a href="https://htmx.org/" target="_blank">HTMX</a>
+        </small>
+    </footer>
+    
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" 
+            onclick="toggleTheme()" 
+            aria-label="Toggle theme"
+            data-tooltip="Toggle theme"
+            data-placement="left">
+        <span id="theme-icon">🌙</span>
+    </button>
+    
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            const icon = document.getElementById('theme-icon');
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            icon.textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        // Load saved theme preference
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const icon = document.getElementById('theme-icon');
+            
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            icon.textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        });
+    </script>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

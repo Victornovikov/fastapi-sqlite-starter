@@ -1,0 +1,68 @@
+---
+description: How to implement protected endpoints and handle authentication in the FastAPI app
+---
+# Implementing Protected Endpoints
+
+## Adding New Protected Endpoints
+Use the `get_current_active_user` dependency to protect any endpoint:
+
+```python
+from fastapi import APIRouter, Depends
+from app.auth import get_current_active_user
+from app.models import User
+
+router = APIRouter()
+
+@router.get("/protected")
+async def protected_route(current_user: User = Depends(get_current_active_user)):
+    # current_user is guaranteed to be authenticated and active
+    return {"user": current_user}
+```
+
+## Admin-Only Endpoints
+For endpoints that require superuser privileges:
+
+```python
+from fastapi import HTTPException, status
+
+@router.get("/admin-only")
+async def admin_route(current_user: User = Depends(get_current_active_user)):
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    return {"message": "Admin access granted"}
+```
+
+## Available Dependencies
+- `get_current_user`: Returns user from JWT token (may be inactive)
+- `get_current_active_user`: Returns active user from JWT token
+- `get_session`: Provides database session
+
+## Authentication Headers
+Protected endpoints expect the JWT token in the Authorization header:
+```
+Authorization: Bearer <jwt_token>
+```
+
+## Common Response Codes
+- 401 Unauthorized: Missing or invalid token
+- 403 Forbidden: Valid token but insufficient permissions
+- 200 OK: Successful authentication and authorization
+
+## User Data Access Pattern
+Users should only access their own data:
+```python
+@router.put("/users/me")
+async def update_user_me(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_session)
+):
+    # Update only the authenticated user's data
+    current_user.email = user_update.email
+    session.add(current_user)
+    session.commit()
+    return current_user
+```

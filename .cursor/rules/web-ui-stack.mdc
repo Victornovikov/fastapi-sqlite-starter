@@ -1,0 +1,347 @@
+---
+description: Complete guide for working with the FastAPI web UI stack including Jinja2, Pico CSS, HTMX, development workflow, and troubleshooting
+globs: "*.html,*.jinja2,app/templates/**,app/routers/ui.py"
+---
+
+# Web UI Stack & Development Guide
+
+This FastAPI application uses a modern web stack with server-side rendering and progressive enhancement.
+
+## Technology Stack
+
+### Core Technologies
+- **Jinja2** - Server-side templating engine
+- **Jinja2-fragments** - Partial template rendering for HTMX
+- **Pico CSS** - Minimal, semantic CSS framework
+- **HTMX** - HTML-first dynamic interactions
+
+## Pico CSS Best Practices
+
+### Minimize Custom CSS
+Pico CSS is designed to work with semantic HTML. Before adding custom CSS:
+1. Check if Pico already handles it (it usually does)
+2. Use Pico's built-in classes only when necessary (`.outline`, `.secondary`, `.contrast`)
+3. Leverage semantic HTML elements that Pico styles automatically
+
+### Document Structure
+```html
+<body>
+    <header class="container">
+        <nav><!-- Navigation here --></nav>
+    </header>
+    
+    <main class="container">
+        <!-- Main content -->
+    </main>
+    
+    <footer class="container">
+        <!-- Footer content -->
+    </footer>
+</body>
+```
+
+### Navigation Pattern
+Pico automatically distributes `<ul>` elements horizontally in `<nav>`:
+```html
+<nav>
+    <ul>
+        <li><strong><a href="/">Brand</a></strong></li>
+    </ul>
+    <ul>
+        <li><a href="/page">Link</a></li>
+        <li><button class="outline">Button</button></li>
+    </ul>
+</nav>
+```
+
+### Forms
+- Forms are styled automatically, no classes needed
+- Use semantic HTML: `<label>`, `<input>`, `<button>`
+- Helper text goes in `<small>` below inputs
+- Loading states: Pico shows spinner when `aria-busy="true"`
+
+### Grid System
+Use `.grid` for auto-layout columns:
+```html
+<div class="grid">
+    <article>Column 1</article>
+    <article>Column 2</article>
+</div>
+```
+
+## HTMX Guidelines
+
+### When to Use HTMX
+✅ **DO use HTMX for:**
+- Form submissions (login, signup, etc.)
+- Partial page updates (loading fragments)
+- Actions that don't change the URL (logout)
+- Dynamic content loading
+
+❌ **DON'T use HTMX for:**
+- Full page navigation (use regular links)
+- Simple navigation between pages
+- Links that should update the browser URL
+
+### Common Patterns
+
+#### Form Submission
+```html
+<form hx-post="/endpoint" hx-target="#message-container">
+    <!-- form fields -->
+    <button type="submit">Submit</button>
+</form>
+<div id="message-container"></div>
+```
+
+#### Logout Button
+```html
+<button hx-post="/logout" class="outline">Logout</button>
+```
+
+#### Avoid Target Duplication
+Never use `hx-target="main"` for full page loads - this causes nav/footer duplication:
+```html
+<!-- Wrong -->
+<a href="/profile" hx-get="/profile" hx-target="main">Profile</a>
+
+<!-- Correct -->
+<a href="/profile">Profile</a>
+```
+
+## Jinja2 Templates
+
+### Base Template Structure
+Every page should extend `base.html`:
+```jinja2
+{% extends "base.html" %}
+
+{% block title %}Page Title - App Name{% endblock %}
+
+{% block content %}
+    <!-- Page content here -->
+{% endblock %}
+```
+
+### Template Organization
+```
+app/templates/
+├── base.html           # Base template with nav and footer
+├── index.html          # Landing page
+├── auth.html           # Login/signup
+├── dashboard.html      # User dashboard
+├── profile.html        # User profile
+├── 404.html            # 404 error page
+├── error.html          # Generic error page
+└── fragments/          # HTMX partial templates
+    ├── auth_error.html
+    ├── auth_success.html
+    ├── nav_user.html
+    └── nav_guest.html
+```
+
+## Jinja2-fragments with FastAPI
+
+### Configuration
+```python
+from jinja2_fragments.fastapi import Jinja2Blocks
+
+templates = Jinja2Blocks(directory="app/templates")
+```
+
+### Rendering Fragments
+Use for HTMX partial updates:
+```python
+# Return a fragment for HTMX
+return templates.TemplateResponse(
+    "fragments/auth_error.html",
+    {"request": request, "error": "Invalid credentials"}
+)
+```
+
+### Full Page vs Fragment
+```python
+# Full page (normal navigation)
+return templates.TemplateResponse(
+    "dashboard.html",
+    {"request": request, "user": current_user}
+)
+
+# Fragment (HTMX update)
+return templates.TemplateResponse(
+    "fragments/message.html",
+    {"request": request, "message": "Success!"}
+)
+```
+
+## Authentication Flow
+
+### Cookie-Based JWT Storage
+Store JWT tokens in httpOnly cookies for security:
+```python
+response.set_cookie(
+    key="access_token",
+    value=token,
+    httponly=True,
+    secure=False,  # Set to True in production with HTTPS
+    samesite="lax",
+    max_age=settings.access_token_expire_minutes * 60
+)
+```
+
+### Protected Routes Pattern
+```python
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(
+    request: Request,
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "user": current_user}
+    )
+```
+
+### HTMX Form Handler Pattern
+```python
+@router.post("/auth/login", response_class=HTMLResponse)
+async def handle_login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    user = authenticate_user(session, username, password)
+    
+    if not user:
+        # Return error fragment
+        return templates.TemplateResponse(
+            "fragments/auth_error.html",
+            {"request": request, "error": "Invalid credentials"}
+        )
+    
+    # Create JWT and set cookie
+    access_token = create_access_token(data={"sub": user.username})
+    
+    response = templates.TemplateResponse(
+        "fragments/auth_success.html",
+        {"request": request, "redirect_url": "/dashboard"}
+    )
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,  # True in production
+        samesite="lax"
+    )
+    
+    return response
+```
+
+## Common Pitfalls to Avoid
+
+1. **Don't wrap buttons in forms unnecessarily** - HTMX works directly on buttons
+2. **Don't add custom CSS for spacing** - Pico handles this
+3. **Don't use `style` attributes** - Use semantic HTML instead
+4. **Don't mix full page loads with partial updates** - Choose one approach per action
+5. **Don't forget `aria-busy` for loading states** - Pico shows spinners automatically
+6. **Don't use classes like `.center-content`** - Use Pico's semantic containers
+
+## Security Considerations
+
+- **JWT in httpOnly cookies** - Prevents XSS attacks
+- **SameSite cookie attribute** - CSRF protection
+- **Server-side validation** - Never trust client input
+- **Secure flag** - Enable in production with HTTPS
+- **Token expiration** - Default 30 minutes
+- **Password hashing** - bcrypt with salt
+
+## Testing Checklist
+
+- [ ] Navigation works without JavaScript (progressive enhancement)
+- [ ] Forms show loading states during submission
+- [ ] Error messages display correctly
+- [ ] Authentication redirects work properly
+- [ ] No duplicate headers/footers on any page
+- [ ] Responsive design works on mobile
+- [ ] Theme toggle persists across page loads
+- [ ] Logout clears authentication properly
+
+## Development Workflow
+
+### Quick Start
+```bash
+# Start server
+cd /root/fastapi-sqlite
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Stop server
+pkill -f "uvicorn app.main:app"
+```
+
+### Testing Commands
+```bash
+# Create test user and get JWT cookie
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/signup \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=testuser&email=test@example.com&password=testpass123" \
+  -i | grep -oP 'access_token=\K[^;]+')
+
+# Test protected page
+curl -s http://localhost:8000/dashboard -H "Cookie: access_token=$TOKEN"
+
+# Check page structure (should return 1 nav element)
+curl -s http://localhost:8000/ | grep -c "<nav>"
+
+# Test 404 page
+curl -s http://localhost:8000/nonexistent | grep "404"
+
+# Simulate HTMX request
+curl -H "HX-Request: true" http://localhost:8000/endpoint
+```
+
+## Common Troubleshooting
+
+### Port Already in Use
+```bash
+pkill -f "uvicorn app.main:app"
+# Or: ps aux | grep uvicorn && kill -9 <PID>
+```
+
+### Duplicate Navigation/Footer
+- Remove `hx-target="main"` from navigation links
+- Use regular `<a href="/page">` for full page navigation
+- Only use HTMX for partial updates (forms, fragments)
+
+### Authentication Issues
+- Check browser DevTools > Application > Cookies for JWT
+- Verify routes use `get_current_user_optional` dependency
+- Ensure logout endpoint clears the `access_token` cookie
+
+### HTMX Not Working
+- Verify HTMX script loaded in browser console
+- Check Network tab for actual requests
+- Ensure endpoints return fragments (not full pages)
+
+### Templates Not Updating
+- Verify `--reload` flag is set
+- Check terminal for syntax errors
+- Ensure file is saved
+
+## Debugging Tools
+
+- **SQLAlchemy Logs**: Watch terminal for all database queries
+- **Browser DevTools**: Network tab for HTMX, Application for cookies
+- **Test Headers**: `curl -i` to see all response headers
+
+## Production Checklist
+
+- [ ] Set strong `SECRET_KEY` in environment
+- [ ] Enable `secure=True` for cookies
+- [ ] Use PostgreSQL (not SQLite)
+- [ ] Configure HTTPS
+- [ ] Set proper CORS origins

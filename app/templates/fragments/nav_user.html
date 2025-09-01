@@ -1,0 +1,14 @@
+<!-- Navigation fragment for logged-in users -->
+<ul>
+    <li><strong><a href="/">FastAPI Auth</a></strong></li>
+</ul>
+<ul>
+    <li>
+        <a href="/profile">
+            {{ user.username }}
+        </a>
+    </li>
+    <li>
+        <button hx-post="/logout" class="outline">Logout</button>
+    </li>
+</ul>

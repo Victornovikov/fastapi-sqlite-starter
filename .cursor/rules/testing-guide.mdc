@@ -1,0 +1,60 @@
+---
+description: Guidelines for writing and running tests in the FastAPI authentication project
+---
+# Testing Guidelines
+
+## Test Architecture
+- Tests use in-memory SQLite database (via `StaticPool`)
+- Database dependency injection is overridden in tests
+- Each test gets a fresh database instance
+- Test fixtures are defined in [tests/conftest.py](mdc:tests/conftest.py)
+
+## Running Tests
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_auth.py -v
+
+# Run specific test
+pytest tests/test_auth.py::test_register_user -v
+
+# Run with coverage
+pytest tests/ --cov=app --cov-report=html
+
+# Run tests in parallel (requires pytest-xdist)
+pytest tests/ -n auto
+```
+
+## Test Organization
+- Authentication tests: [tests/test_auth.py](mdc:tests/test_auth.py)
+- User access control tests: [tests/test_user_access.py](mdc:tests/test_user_access.py)
+- Each test class groups related functionality
+- Use descriptive test names that explain what is being tested
+
+## Common Test Patterns
+```python
+# Setting up test users
+def setup_two_users(self, client: TestClient):
+    user_data = {...}
+    client.post("/auth/register", json=user_data)
+    response = client.post("/auth/token", data={...})
+    token = response.json()["access_token"]
+    return token
+
+# Testing protected endpoints
+response = client.get(
+    "/users/me",
+    headers={"Authorization": f"Bearer {token}"}
+)
+```
+
+## Testing Checklist
+- Test both success and failure cases
+- Test authentication required endpoints without tokens
+- Test with invalid/expired tokens
+- Test data validation (invalid emails, short passwords, etc.)
+- Test duplicate username/email registration
+- Test user isolation (users can't access other users' data)
+- Test admin-only endpoints with regular users

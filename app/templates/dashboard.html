@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FastAPI Auth App{% endblock %}
+
+{% block content %}
+<hgroup>
+    <h1>Hello, {{ user.username }}! 👋</h1>
+    <p>Welcome to your dashboard</p>
+</hgroup>
+
+<section>
+    <h3>Quick Stats</h3>
+    <div class="grid">
+        <article>
+            <header>
+                <strong>Account Status</strong>
+            </header>
+            <p>
+                <mark style="background-color: var(--ins-color); color: var(--ins-text);">
+                    Active
+                </mark>
+            </p>
+        </article>
+        
+        <article>
+            <header>
+                <strong>Member Since</strong>
+            </header>
+            <p>{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'Today' }}</p>
+        </article>
+        
+        <article>
+            <header>
+                <strong>Profile</strong>
+            </header>
+                                <p>
+                        <a href="/profile">
+                            View Profile →
+                        </a>
+                    </p>
+        </article>
+    </div>
+</section>
+
+<section>
+    <div class="grid">
+        <a href="/profile" role="button">Manage Profile</a>
+        <button hx-post="/logout" class="secondary">Logout</button>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Error - FastAPI Auth App{% endblock %}
+
+{% block content %}
+<article>
+    <header>
+        <hgroup>
+            <h1>{{ status_code | default(500) }}</h1>
+            <p>{{ title | default("Something went wrong") }}</p>
+        </hgroup>
+    </header>
+    
+    <p>{{ detail | default("An unexpected error occurred. Please try again later.") }}</p>
+    
+    <footer>
+        <div class="grid">
+            <a href="/" role="button" class="outline">Go Home</a>
+            <a href="javascript:history.back()" role="button">Go Back</a>
+        </div>
+    </footer>
+</article>
+{% endblock %}

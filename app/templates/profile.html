@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - FastAPI Auth App{% endblock %}
+
+{% block content %}
+<div class="grid">
+    <div></div>
+    <article>
+        <header>
+            <hgroup>
+                <h2>User Profile</h2>
+                <p>Manage your account information</p>
+            </hgroup>
+        </header>
+        
+        <section>
+            <h3>Account Details</h3>
+            
+            <dl>
+                <dt>Username</dt>
+                <dd><strong>{{ user.username }}</strong></dd>
+                
+                <dt>Email</dt>
+                <dd>{{ user.email }}</dd>
+                
+                <dt>Full Name</dt>
+                <dd>{{ user.full_name or "Not provided" }}</dd>
+                
+                <dt>Account Status</dt>
+                <dd>
+                    {% if user.is_active %}
+                        <mark style="background-color: var(--ins-color); color: var(--ins-text);">Active</mark>
+                    {% else %}
+                        <mark style="background-color: var(--del-color); color: var(--del-text);">Inactive</mark>
+                    {% endif %}
+                </dd>
+                
+                <dt>Role</dt>
+                <dd>
+                    {% if user.is_superuser %}
+                        <mark>Administrator</mark>
+                    {% else %}
+                        Regular User
+                    {% endif %}
+                </dd>
+                
+                <dt>Member Since</dt>
+                <dd>{{ user.created_at.strftime('%B %d, %Y at %I:%M %p') if user.created_at else 'Unknown' }}</dd>
+                
+                <dt>Last Updated</dt>
+                <dd>{{ user.updated_at.strftime('%B %d, %Y at %I:%M %p') if user.updated_at else 'Never' }}</dd>
+            </dl>
+        </section>
+        
+        <section>
+            <h3>Actions</h3>
+            <div class="grid">
+                <button class="secondary" disabled>Edit Profile (Coming Soon)</button>
+                <button class="secondary" disabled>Change Password (Coming Soon)</button>
+            </div>
+        </section>
+        
+        <footer>
+            <a href="/dashboard" role="button" class="outline">← Back to Dashboard</a>
+        </footer>
+    </article>
+    <div></div>
+</div>
+{% endblock %}

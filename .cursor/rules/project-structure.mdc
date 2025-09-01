@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+# FastAPI Authentication Project Structure
+
+This is a FastAPI application using OAuth2 Password Flow with JWT tokens for authentication.
+
+## Core Architecture
+- **Routers Layer** ([app/routers/](mdc:app/routers/)) - HTTP endpoints that handle requests/responses
+- **Business Logic Layer** ([app/auth.py](mdc:app/auth.py), [app/security.py](mdc:app/security.py)) - Authentication logic and JWT handling
+- **Data Layer** ([app/models.py](mdc:app/models.py), [app/database.py](mdc:app/database.py)) - SQLModel ORM with SQLite database
+- **Validation Layer** ([app/schemas.py](mdc:app/schemas.py)) - Pydantic models for request/response validation
+- **Configuration** ([app/config.py](mdc:app/config.py)) - Settings loaded from environment variables
+
+## Key Files
+- Main application entry: [app/main.py](mdc:app/main.py)
+- Database models: [app/models.py](mdc:app/models.py)
+- Authentication logic: [app/auth.py](mdc:app/auth.py)
+- Security utilities: [app/security.py](mdc:app/security.py)
+- API routers: [app/routers/auth.py](mdc:app/routers/auth.py), [app/routers/users.py](mdc:app/routers/users.py)
+
+## Authentication Flow
+1. User registers via `/auth/register` with username, email, password
+2. Password is hashed using bcrypt before storage
+3. User logs in via `/auth/token` (OAuth2 standard endpoint) receiving a JWT
+4. JWT contains username in the `sub` claim with expiration time
+5. Protected endpoints use `Depends(get_current_active_user)` to validate JWT and fetch user
+
+## Security Notes
+- Passwords are never stored in plain text
+- JWT secret key must be changed in production (min 32 characters)
+- Token expiration set to 30 minutes by default
+- Users can only access their own data unless they have superuser privileges

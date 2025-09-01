@@ -1,0 +1,57 @@
+---
+description: Security best practices and considerations for the FastAPI authentication system
+---
+# Security Best Practices
+
+## Password Handling
+- **NEVER** store passwords in plain text
+- Always use `get_password_hash()` from [app/security.py](mdc:app/security.py) before storing
+- Passwords are hashed using bcrypt with automatic salt
+- Use `verify_password()` to check passwords
+
+## JWT Token Security
+- **CRITICAL**: Change the SECRET_KEY in production (minimum 32 characters)
+- Generate secure key: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+- Default token expiration is 30 minutes (configurable via ACCESS_TOKEN_EXPIRE_MINUTES)
+- Tokens contain only the username in the `sub` claim
+
+## User Isolation
+- Users can only access their own data via `/users/me` endpoints
+- Never expose other users' data to non-admin users
+- Check ownership before allowing updates/deletes
+
+## Superuser Management
+- No public endpoint for creating superusers (by design)
+- Superusers must be promoted via direct database access or admin scripts
+- Only superusers can access `/users/` endpoint to list all users
+
+## Input Validation
+- All user inputs are validated via Pydantic schemas
+- Email validation is enforced
+- Password requirements should be added for production (min length, complexity)
+
+## Database Security
+- Use parameterized queries (SQLModel handles this automatically)
+- Sessions are properly closed after each request
+- Unique constraints on username and email prevent duplicates
+
+## Environment Variables
+- Store sensitive config in `.env` file (never commit this)
+- Required variables:
+  - SECRET_KEY: JWT signing key
+  - DATABASE_URL: Database connection string
+  - ACCESS_TOKEN_EXPIRE_MINUTES: Token lifetime
+
+## Error Handling
+- Never expose internal error details to users
+- Use appropriate HTTP status codes
+- Log security events for monitoring
+
+## Production Checklist
+- [ ] Generate and set a strong SECRET_KEY
+- [ ] Use HTTPS only (handle in reverse proxy)
+- [ ] Set appropriate CORS origins
+- [ ] Implement rate limiting
+- [ ] Add password complexity requirements
+- [ ] Enable security headers (helmet)
+- [ ] Regular security audits of dependencies

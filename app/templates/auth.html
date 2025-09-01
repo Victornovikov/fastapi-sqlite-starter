@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Login / Sign Up - FastAPI Auth App{% endblock %}
+
+{% block content %}
+<div class="grid">
+    <div></div>
+    <article>
+        <header>
+            <hgroup>
+                <h2>Welcome Back</h2>
+                <p>Sign in to your account or create a new one</p>
+            </hgroup>
+        </header>
+        
+        <!-- Tab navigation -->
+        <nav>
+            <ul>
+                <li><a href="#login" id="login-tab" onclick="showLogin(event)" class="contrast">Login</a></li>
+                <li><a href="#signup" id="signup-tab" onclick="showSignup(event)">Sign Up</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Message container for HTMX responses -->
+        <div id="auth-message"></div>
+        
+        <!-- Login Form -->
+        <div id="login-form">
+            <form hx-post="/auth/login" 
+                  hx-target="#auth-message">
+                <label for="login-username">
+                    Username
+                    <input type="text" 
+                           id="login-username" 
+                           name="username" 
+                           required 
+                           autofocus
+                           minlength="3"
+                           pattern="[a-zA-Z0-9_]+"
+                           title="Username must be at least 3 characters and contain only letters, numbers, and underscores">
+                </label>
+                
+                <label for="login-password">
+                    Password
+                    <input type="password" 
+                           id="login-password" 
+                           name="password" 
+                           required
+                           minlength="6">
+                </label>
+                
+                <button type="submit">
+                    Sign In
+                </button>
+            </form>
+        </div>
+        
+        <!-- Signup Form -->
+        <div id="signup-form" style="display: none;">
+            <form hx-post="/auth/signup" 
+                  hx-target="#auth-message">
+                <label for="signup-username">
+                    Username
+                    <input type="text" 
+                           id="signup-username" 
+                           name="username" 
+                           required
+                           minlength="3"
+                           pattern="[a-zA-Z0-9_]+"
+                           title="Username must be at least 3 characters and contain only letters, numbers, and underscores">
+                </label>
+                
+                <label for="signup-email">
+                    Email
+                    <input type="email" 
+                           id="signup-email" 
+                           name="email" 
+                           required
+                           pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+                           title="Please enter a valid email address">
+                </label>
+                
+                <label for="signup-fullname">
+                    Full Name (optional)
+                    <input type="text" 
+                           id="signup-fullname" 
+                           name="full_name"
+                           maxlength="100">
+                </label>
+                
+                <label for="signup-password">
+                    Password
+                    <input type="password" 
+                           id="signup-password" 
+                           name="password" 
+                           required
+                           minlength="6"
+                           title="Password must be at least 6 characters long">
+                </label>
+                
+                <button type="submit">
+                    Create Account
+                </button>
+            </form>
+        </div>
+    </article>
+    <div></div>
+</div>
+
+<script>
+    function showLogin(event) {
+        event.preventDefault();
+        document.getElementById('login-form').style.display = 'block';
+        document.getElementById('signup-form').style.display = 'none';
+        document.getElementById('login-tab').classList.add('contrast');
+        document.getElementById('signup-tab').classList.remove('contrast');
+        document.getElementById('login-username').focus();
+    }
+    
+    function showSignup(event) {
+        event.preventDefault();
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('signup-form').style.display = 'block';
+        document.getElementById('login-tab').classList.remove('contrast');
+        document.getElementById('signup-tab').classList.add('contrast');
+        document.getElementById('signup-username').focus();
+    }
+</script>
+{% endblock %}

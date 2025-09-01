@@ -1,6 +1,7 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
+from typing import Optional
 from app.database import get_session
 from app.models import User
 from app.schemas import TokenData
@@ -53,3 +54,35 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+async def get_current_user_from_cookie(
+    request: Request,
+    session: Session = Depends(get_session)
+) -> Optional[User]:
+    """Get current user from JWT cookie if present"""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    
+    try:
+        payload = decode_token(token)
+        if payload is None:
+            return None
+        
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        
+        statement = select(User).where(User.username == username)
+        user = session.exec(statement).first()
+        return user
+    except:
+        return None
+
+
+async def get_current_user_optional(
+    user: Optional[User] = Depends(get_current_user_from_cookie)
+) -> Optional[User]:
+    """Optional dependency that returns user if authenticated, None otherwise"""
+    return user
