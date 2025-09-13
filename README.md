@@ -1,34 +1,45 @@
-# FastAPI Authentication App with Web UI
+# FastAPI + SQLite + HTMX + Resend Template
 
-A production-ready FastAPI application featuring JWT authentication, SQLModel ORM, and a modern web interface built with HTMX and Pico CSS.
+A modern, production-ready web application template combining FastAPI backend with HTMX-powered frontend for seamless user interactions.
 
-## ✨ Features
+## 🚀 Features
 
-### Backend
-- **JWT Authentication** - OAuth2 Password Flow with secure httpOnly cookies
-- **SQLModel ORM** - Type-safe database operations with SQLite
-- **User Management** - Registration, login, profile management
-- **Role-Based Access** - Superuser support for admin functionality
-- **Security** - Bcrypt password hashing, secure token handling
+### Authentication & Security
+- **JWT Cookie Authentication** - Secure httpOnly cookies for web UI
+- **API Token Support** - OAuth2-compatible endpoints for API clients
+- **User Registration & Login** with secure bcrypt password hashing
+- **Password Reset** functionality via email with Resend integration
+- **CSRF Protection** using double-submit cookie pattern
+- **Role-based Access Control** with admin/superuser support
 
 ### Frontend
-- **Modern UI** - Clean, responsive design with Pico CSS
-- **Dynamic Interactions** - HTMX for seamless page updates
-- **Theme Support** - Light/dark mode with persistence
-- **Form Validation** - Client and server-side validation
-- **Error Handling** - Custom error pages and user feedback
+- **HTMX-Powered UI** for dynamic, SPA-like experience
+- **Responsive Forms** with real-time validation and error handling
+- **Pico CSS** for clean, modern styling
+- **Template Fragments** for efficient partial page updates
+- Pages: Login/Signup, Dashboard, Profile, Password Reset (forgot/reset)
 
-## 🚀 Quick Start
+### Backend Architecture
+- **FastAPI** with async/await support
+- **SQLModel ORM** combining SQLAlchemy with Pydantic validation
+- **SQLite Database** with automatic table creation
+- **Dependency Injection** for clean, testable code
+- **Environment-based Configuration** with .env support
 
-### Prerequisites
-- Python 3.8+
-- pip package manager
+### Testing
+- Comprehensive test suite with pytest
+- In-memory database for isolated testing
+- CSRF protection tests
+- Authentication flow tests
+- Password reset tests
+- Admin access tests
 
-### Installation
+## 📦 Installation
+
 ```bash
-# Clone repository
-git clone <repository-url>
-cd fastapi-sqlite
+# Clone the repository
+git clone <your-repo-url>
+cd fastapi-sqlite-htmx-resend
 
 # Create virtual environment
 python -m venv venv
@@ -37,192 +48,149 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Set up environment
+# Copy environment variables
 cp .env.example .env
-# Generate SECRET_KEY: python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Generate a secure secret key
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+# Add the generated key to .env as SECRET_KEY
 ```
 
-### Running the Application
-```bash
-# Development
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+## 🔧 Configuration
 
-# Production
+Edit `.env` file:
+
+```env
+SECRET_KEY=your-secure-secret-key-here
+DATABASE_URL=sqlite:///./app.db
+ENVIRONMENT=development
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# For password reset emails
+RESEND_API_KEY=re_xxx_change_this
+EMAIL_FROM=Your App <noreply@yourdomain.com>
+EMAIL_FROM_NAME=Your App Name
+RESET_URL_BASE=https://yourdomain.com/reset
+
+# Optional: Webhook verification
+RESEND_WEBHOOK_SECRET=whsec_xxx_change_this
+```
+
+## 🏃 Running the Application
+
+### Development Mode
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Production Mode
+```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-Access the application at `http://localhost:8000`
+Visit: http://localhost:8000
 
-## 📚 Documentation
+## 🧪 Testing
 
-- **Web UI**: `http://localhost:8000` - User interface
-- **API Docs**: `http://localhost:8000/docs` - Swagger UI
-- **ReDoc**: `http://localhost:8000/redoc` - Alternative API docs
+```bash
+# Run all tests
+pytest tests/ -v
 
-## 🔌 Endpoints
+# Run with coverage
+pytest tests/ --cov=app --cov-report=html
 
-### Web UI Routes
-- `/` - Landing page
-- `/login` - Login/Signup page
-- `/dashboard` - User dashboard (protected)
-- `/profile` - User profile (protected)
-
-### API Endpoints
-- `POST /auth/register` - User registration → [`app/routers/auth.py`](app/routers/auth.py#L16)
-- `POST /auth/token` - Login (OAuth2) → [`app/routers/auth.py`](app/routers/auth.py#L49)
-- `GET /users/me` - Current user → [`app/routers/users.py`](app/routers/users.py#L13)
-- `PUT /users/me` - Update profile → [`app/routers/users.py`](app/routers/users.py#L18)
+# Run specific test
+pytest tests/test_auth.py::test_login -v
+```
 
 ## 📁 Project Structure
 
 ```
-app/
-├── templates/          # Jinja2 templates
-│   ├── base.html      # Base template with navigation
-│   ├── auth.html      # Login/signup forms
-│   ├── dashboard.html # User dashboard
-│   └── fragments/     # HTMX partial templates
-├── routers/
-│   ├── auth.py        # Authentication endpoints
-│   ├── users.py       # User management endpoints
-│   └── ui.py          # Web UI routes
-├── main.py            # FastAPI app initialization
-├── auth.py            # Authentication logic
-├── security.py        # JWT and password utilities
-├── models.py          # SQLModel database models
-└── schemas.py         # Pydantic validation schemas
+├── app/
+│   ├── routers/        # API and UI routes
+│   │   ├── auth.py     # Authentication endpoints
+│   │   ├── users.py    # User management
+│   │   └── ui.py       # HTMX UI routes
+│   ├── templates/      # Jinja2 templates
+│   │   ├── fragments/  # HTMX partial templates
+│   │   └── *.html      # Page templates
+│   ├── auth.py         # Authentication logic
+│   ├── security.py     # Security utilities
+│   ├── models.py       # SQLModel database models
+│   ├── schemas.py      # Pydantic validation schemas
+│   ├── database.py     # Database configuration
+│   └── main.py         # FastAPI application
+├── tests/              # Test suite
+├── requirements.txt    # Python dependencies
+└── .env.example       # Environment variables template
 ```
 
-## 🛠️ Tech Stack
+## 🔑 API Endpoints
 
-### Backend
-- **FastAPI** - Modern Python web framework
-- **SQLModel** - SQL databases with Python objects
-- **Pydantic** - Data validation using Python type hints
-- **python-jose** - JWT token handling
-- **passlib** - Password hashing
+### Public Endpoints
+- `POST /auth/register` - API user registration
+- `POST /auth/token` - API login (returns JWT for Bearer auth)
+- `POST /auth/login` - Web UI login (sets httpOnly JWT cookie)
+- `POST /auth/signup` - Web UI registration (sets httpOnly JWT cookie)
+- `POST /auth/forgot` - Request password reset
+- `POST /auth/reset` - Reset password with token
+- `POST /logout` - Clear authentication cookie
 
-### Frontend
-- **Jinja2** - Template engine
-- **HTMX** - Dynamic HTML without JavaScript
-- **Pico CSS** - Minimal CSS framework
-- **jinja2-fragments** - Partial template rendering
+### Protected Endpoints
+- `GET /users/me` - Get current user profile
+- `PUT /users/me` - Update current user profile
+- `GET /users/` - List all users (admin only)
 
-### Development
-- **pytest** - Testing framework
-- **httpx** - Async HTTP client for tests
-- **uvicorn** - ASGI server
+### UI Routes
+- `/` - Landing page
+- `/login` - Login/Signup page
+- `/dashboard` - User dashboard (protected)
+- `/profile` - User profile (protected)
+- `/forgot` - Password reset request
+- `/reset` - Password reset form
 
-## 🧪 Testing
+## 🛠️ Development Tips
 
-Run the test suite:
-```bash
-pytest tests/ -v
+### Adding Protected Endpoints
+```python
+from app.auth import get_current_active_user
+
+@router.get("/protected")
+async def protected_route(user: User = Depends(get_current_active_user)):
+    return {"message": f"Hello {user.username}"}
 ```
 
-See [`tests/`](tests/) for test implementations and [`tests.md`](tests.md) for testing documentation.
+### Authentication Methods
 
-## 🔒 Security
+The template supports dual authentication methods:
 
-### Production Checklist
-- [x] Use HTTPS only (automatic with Cloudflare)
-- [x] Set strong `SECRET_KEY` (auto-generated in deployment)
-- [x] Configure proper CORS origins (set in deployment)
-- [x] Enable secure cookies (`secure=True`)
-- [x] Implement rate limiting (via Cloudflare)
-- [x] SQLite with WAL mode (production-ready for most apps)
+1. **Web UI (Cookie-based)**: JWT stored in secure httpOnly cookies with CSRF protection
+2. **API (Token-based)**: JWT returned as Bearer token for API clients (OAuth2-compatible)
 
-### Authentication Flow
-1. User registers/logs in via UI or API
-2. Server issues JWT token
-3. Token stored in httpOnly cookie (UI) or returned as JSON (API)
-4. Subsequent requests include token automatically (UI) or in Authorization header (API)
+### Using HTMX Fragments
+```python
+@router.post("/auth/login", response_class=HTMLResponse)
+async def handle_login(request: Request, email: str = Form(...),
+                      password: str = Form(...), csrf: str = Form(...)):
+    # Verify CSRF, authenticate user
+    verify_csrf(request, csrf)
+    user = authenticate_user(session, email, password)
 
-See [`app/auth.py`](app/auth.py) for implementation details.
+    if user:
+        # Create JWT and set cookie with HTMX redirect
+        response = hx_redirect("/dashboard", request)
+        response.set_cookie("access_token", token, httponly=True,
+                          secure=settings.cookie_secure, samesite="lax")
+        return response
 
-## 🚢 Production Deployment (Hetzner + Cloudflare)
-
-### Quick Deploy (10 minutes)
-
-Deploy directly to a Hetzner VPS with zero exposed ports using Cloudflare Tunnel:
-
-```bash
-# 1. Get a Cloudflare API token (free account)
-# Visit: https://dash.cloudflare.com/profile/api-tokens
-
-# 2. SSH to your server and clone your repo
-ssh root@your-server-ip
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-cd YOUR_REPO
-
-# 3. Run deployment script
-./deploy/deploy.sh --api-token YOUR_TOKEN
-
-# 4. Access your app at https://your-app.pages.dev (free domain)
+    return templates.TemplateResponse("fragments/auth_error.html",
+                                    {"error": "Invalid credentials"})
 ```
-
-### Features
-- **Runs directly with systemd** - Simple and reliable
-- **Zero exposed ports** (maximum security)
-- **Free SSL certificate** via Cloudflare
-- **DDoS protection** included
-- **Git-based updates** - Just `git pull` and restart
-- **SQLite with WAL mode** for production
-
-### Deployment Files
-- [`deploy/deploy.sh`](deploy/deploy.sh) - One-script deployment
-- [`deploy/systemd/fastapi-app.service`](deploy/systemd/fastapi-app.service) - Systemd service template
-- [`DEPLOYMENT.md`](DEPLOYMENT.md) - Detailed deployment guide
-
-### Post-Deployment Commands
-```bash
-# Update application (super simple!)
-cd /your/repo/path
-git pull
-sudo systemctl restart fastapi-app
-
-# Check service status
-systemctl status fastapi-app
-
-# View logs
-journalctl -u fastapi-app -f
-
-# Check tunnel status
-systemctl status cloudflared
-```
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment documentation.
-
-## 🐳 Docker Development
-
-For local Docker development:
-
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-## 📦 Admin Features
-
-Create admin users:
-```bash
-python scripts/promote_to_admin.py <username>
-```
-
-See [`scripts/`](scripts/) for admin utilities.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ## 📝 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - Feel free to use this template for your projects!
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

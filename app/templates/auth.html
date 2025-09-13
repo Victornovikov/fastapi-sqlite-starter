@@ -26,65 +26,72 @@
         
         <!-- Login Form -->
         <div id="login-form">
-            <form hx-post="/auth/login" 
+            <form hx-post="/auth/login"
                   hx-target="#auth-message">
-                <label for="login-username">
-                    Username
-                    <input type="text" 
-                           id="login-username" 
-                           name="username" 
-                           required 
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <label for="login-email">
+                    Email
+                    <input type="email"
+                           id="login-email"
+                           name="email"
+                           required
                            autofocus
-                           minlength="3"
-                           pattern="[a-zA-Z0-9_]+"
-                           title="Username must be at least 3 characters and contain only letters, numbers, and underscores">
+                           placeholder="you@example.com"
+                           pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+                           title="Please enter a valid email address">
                 </label>
                 
                 <label for="login-password">
                     Password
-                    <input type="password" 
-                           id="login-password" 
-                           name="password" 
+                    <input type="password"
+                           id="login-password"
+                           name="password"
                            required
                            minlength="6">
                 </label>
-                
+
+                <label for="remember-me">
+                    <input type="checkbox"
+                           id="remember-me"
+                           name="remember_me"
+                           value="true">
+                    Remember me for 30 days
+                </label>
+
                 <button type="submit">
                     Sign In
                 </button>
+
+                <small>
+                    <a href="/forgot">Forgot your password?</a>
+                </small>
             </form>
         </div>
         
         <!-- Signup Form -->
         <div id="signup-form" style="display: none;">
-            <form hx-post="/auth/signup" 
+            <form hx-post="/auth/signup"
                   hx-target="#auth-message">
-                <label for="signup-username">
-                    Username
-                    <input type="text" 
-                           id="signup-username" 
-                           name="username" 
-                           required
-                           minlength="3"
-                           pattern="[a-zA-Z0-9_]+"
-                           title="Username must be at least 3 characters and contain only letters, numbers, and underscores">
-                </label>
-                
+                <input type="hidden" name="csrf" value="{{ csrf }}">
                 <label for="signup-email">
                     Email
-                    <input type="email" 
-                           id="signup-email" 
-                           name="email" 
+                    <input type="email"
+                           id="signup-email"
+                           name="email"
                            required
+                           autofocus
+                           placeholder="you@example.com"
                            pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
                            title="Please enter a valid email address">
                 </label>
-                
+
                 <label for="signup-fullname">
-                    Full Name (optional)
-                    <input type="text" 
-                           id="signup-fullname" 
+                    Full Name
+                    <input type="text"
+                           id="signup-fullname"
                            name="full_name"
+                           required
+                           placeholder="John Doe"
                            maxlength="100">
                 </label>
                 
@@ -114,16 +121,16 @@
         document.getElementById('signup-form').style.display = 'none';
         document.getElementById('login-tab').classList.add('contrast');
         document.getElementById('signup-tab').classList.remove('contrast');
-        document.getElementById('login-username').focus();
+        document.getElementById('login-email').focus();
     }
-    
+
     function showSignup(event) {
         event.preventDefault();
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('signup-form').style.display = 'block';
         document.getElementById('login-tab').classList.remove('contrast');
         document.getElementById('signup-tab').classList.add('contrast');
-        document.getElementById('signup-username').focus();
+        document.getElementById('signup-email').focus();
     }
 </script>
 {% endblock %}

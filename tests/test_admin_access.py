@@ -10,26 +10,25 @@ class TestAdminAccess:
         """Helper to create an admin user directly in the database."""
         # First register a normal user
         admin_data = {
-            "username": "admin",
-            "email": "admin@example.com", 
+            "email": "admin@example.com",
             "password": "adminpass123",
             "full_name": "Admin User"
         }
         response = client.post("/auth/register", json=admin_data)
         assert response.status_code == 200
-        
+
         # Promote to admin directly in database
-        statement = select(User).where(User.username == "admin")
+        statement = select(User).where(User.email == "admin@example.com")
         admin_user = session.exec(statement).first()
         admin_user.is_superuser = True
         session.add(admin_user)
         session.commit()
         session.refresh(admin_user)
-        
+
         # Get admin token
         response = client.post(
             "/auth/token",
-            data={"username": "admin", "password": "adminpass123"}
+            data={"username": "admin@example.com", "password": "adminpass123"}
         )
         return response.json()["access_token"]
     
@@ -40,7 +39,6 @@ class TestAdminAccess:
         # Create some regular users
         for i in range(3):
             client.post("/auth/register", json={
-                "username": f"user{i}",
                 "email": f"user{i}@example.com",
                 "password": "password123",
                 "full_name": f"User {i}"
@@ -56,14 +54,13 @@ class TestAdminAccess:
         assert len(users) >= 4  # admin + 3 regular users
         
         # Verify admin is in the list
-        usernames = [user["username"] for user in users]
-        assert "admin" in usernames
-        assert all(f"user{i}" in usernames for i in range(3))
+        emails = [user["email"] for user in users]
+        assert "admin@example.com" in emails
+        assert all(f"user{i}@example.com" in emails for i in range(3))
     
     def test_regular_user_cannot_list_users(self, client: TestClient, session: Session):
         # Create a regular user
         user_data = {
-            "username": "regularuser",
             "email": "regular@example.com",
             "password": "password123", 
             "full_name": "Regular User"
@@ -73,7 +70,7 @@ class TestAdminAccess:
         # Get token
         response = client.post(
             "/auth/token",
-            data={"username": "regularuser", "password": "password123"}
+            data={"username": "regular@example.com", "password": "password123"}
         )
         token = response.json()["access_token"]
         
@@ -91,7 +88,6 @@ class TestAdminAccess:
         
         # Create regular user
         regular_data = {
-            "username": "regular",
             "email": "regular@example.com",
             "password": "password123",
             "full_name": "Regular User"
@@ -100,7 +96,7 @@ class TestAdminAccess:
         
         regular_response = client.post(
             "/auth/token",
-            data={"username": "regular", "password": "password123"}
+            data={"username": "regular@example.com", "password": "password123"}
         )
         regular_token = regular_response.json()["access_token"]
         
@@ -148,7 +144,6 @@ class TestAdminAccess:
         
         # Create and check regular user
         client.post("/auth/register", json={
-            "username": "checkuser",
             "email": "check@example.com",
             "password": "password123",
             "full_name": "Check User"
@@ -156,7 +151,7 @@ class TestAdminAccess:
         
         response = client.post(
             "/auth/token",
-            data={"username": "checkuser", "password": "password123"}
+            data={"username": "check@example.com", "password": "password123"}
         )
         token = response.json()["access_token"]
         
@@ -176,7 +171,6 @@ class TestAdminAccess:
         # Create 10 users
         for i in range(10):
             client.post("/auth/register", json={
-                "username": f"testuser{i}",
                 "email": f"test{i}@example.com",
                 "password": "password123",
                 "full_name": f"Test User {i}"
@@ -204,7 +198,6 @@ class TestAdminAccess:
         """Verify there's no API endpoint to create admin users."""
         # Try to register with is_superuser field
         admin_data = {
-            "username": "wannabeadmin",
             "email": "wannabe@example.com",
             "password": "password123",
             "full_name": "Wannabe Admin",
@@ -217,7 +210,7 @@ class TestAdminAccess:
         # Login and check if user is actually admin
         response = client.post(
             "/auth/token",
-            data={"username": "wannabeadmin", "password": "password123"}
+            data={"username": "wannabe@example.com", "password": "password123"}
         )
         token = response.json()["access_token"]
         

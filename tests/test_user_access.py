@@ -7,14 +7,12 @@ class TestUserAccessControl:
     
     def setup_two_users(self, client: TestClient):
         user1_data = {
-            "username": "alice",
             "email": "alice@example.com",
             "password": "alicepass123",
             "full_name": "Alice Smith"
         }
         
         user2_data = {
-            "username": "bob",
             "email": "bob@example.com",
             "password": "bobpass123",
             "full_name": "Bob Jones"
@@ -25,13 +23,13 @@ class TestUserAccessControl:
         
         response1 = client.post(
             "/auth/token",
-            data={"username": "alice", "password": "alicepass123"}
+            data={"username": "alice@example.com", "password": "alicepass123"}
         )
         token1 = response1.json()["access_token"]
         
         response2 = client.post(
             "/auth/token",
-            data={"username": "bob", "password": "bobpass123"}
+            data={"username": "bob@example.com", "password": "bobpass123"}
         )
         token2 = response2.json()["access_token"]
         
@@ -46,7 +44,7 @@ class TestUserAccessControl:
         )
         assert alice_response.status_code == 200
         alice_data = alice_response.json()
-        assert alice_data["username"] == "alice"
+        assert alice_data["email"] == "alice@example.com"
         assert alice_data["email"] == "alice@example.com"
         assert alice_data["full_name"] == "Alice Smith"
         
@@ -56,7 +54,7 @@ class TestUserAccessControl:
         )
         assert bob_response.status_code == 200
         bob_data = bob_response.json()
-        assert bob_data["username"] == "bob"
+        assert bob_data["email"] == "bob@example.com"
         assert bob_data["email"] == "bob@example.com"
         assert bob_data["full_name"] == "Bob Jones"
     
@@ -76,9 +74,9 @@ class TestUserAccessControl:
     def test_users_can_update_own_profile(self, client: TestClient):
         alice_token, bob_token = self.setup_two_users(client)
         
+        # Update only full name (changing email would invalidate the token)
         alice_update = {
-            "full_name": "Alice Johnson",
-            "email": "alice.johnson@example.com"
+            "full_name": "Alice Johnson"
         }
         response = client.put(
             "/users/me",
@@ -88,14 +86,14 @@ class TestUserAccessControl:
         assert response.status_code == 200
         data = response.json()
         assert data["full_name"] == "Alice Johnson"
-        assert data["email"] == "alice.johnson@example.com"
-        assert data["username"] == "alice"
-        
+        assert data["email"] == "alice@example.com"  # Email unchanged
+
         alice_profile = client.get(
             "/users/me",
             headers={"Authorization": f"Bearer {alice_token}"}
         )
         assert alice_profile.json()["full_name"] == "Alice Johnson"
+        assert alice_profile.json()["email"] == "alice@example.com"
         
         bob_profile = client.get(
             "/users/me",
@@ -113,14 +111,14 @@ class TestUserAccessControl:
             headers={"Authorization": f"Bearer {bob_token}"}
         )
         assert alice_with_bob_token.status_code == 200
-        assert alice_with_bob_token.json()["username"] == "bob"
+        assert alice_with_bob_token.json()["email"] == "bob@example.com"
         
         bob_with_alice_token = client.get(
             "/users/me",
             headers={"Authorization": f"Bearer {alice_token}"}
         )
         assert bob_with_alice_token.status_code == 200
-        assert bob_with_alice_token.json()["username"] == "alice"
+        assert bob_with_alice_token.json()["email"] == "alice@example.com"
     
     def test_regular_users_cannot_list_all_users(self, client: TestClient):
         alice_token, _ = self.setup_two_users(client)

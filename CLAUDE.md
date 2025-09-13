@@ -4,14 +4,79 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Running the Application
+### Logging
+The application includes comprehensive centralized logging configured in `app/logging_config.py`:
+
 ```bash
-# Development mode with auto-reload
+# View real-time logs
+tail -f logs/app.log
+
+# Search for specific events
+grep "WARNING\|ERROR" logs/app.log
+grep "login" logs/app.log
+grep "CSRF" logs/app.log
+
+# Analyze authentication events
+grep "app.routers.auth" logs/app.log
+
+# Check rate limiting events
+grep "Rate limit exceeded" logs/app.log
+```
+
+**Log Configuration** (via environment variables):
+- `LOG_LEVEL`: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
+- `LOG_DIR`: Directory for log files (default: logs)
+- `LOG_FILE`: Log filename (default: app.log)
+- `LOG_MAX_BYTES`: Max size before rotation (default: 5MB)
+- `LOG_BACKUP_COUNT`: Number of backup files to keep (default: 5)
+- `LOG_TO_CONSOLE`: Enable console logging (default: True)
+
+**Log Format**: `YYYY-MM-DD HH:MM:SS [LEVEL] module.name: message`
+
+**What gets logged**:
+- Authentication events (login, registration, failures)
+- Rate limiting violations with IP addresses
+- CSRF validation failures
+- Password reset requests and completions
+- Email sending and delivery status
+- User profile access and updates
+- Admin operations and unauthorized access attempts
+- Database operations and errors
+- Webhook events and processing
+
+### Running the Application
+
+#### Development Mode
+```bash
+# Development mode with auto-reload (run from project root)
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Production mode
+# Production mode (direct uvicorn)
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
+
+#### Production Deployment (SystemD Service)
+```bash
+# Deploy production setup (run from project root as root)
+./deploy/deploy.sh --api-token YOUR_CLOUDFLARE_API_TOKEN [--domain your-domain.com]
+
+# Service management (can run from any directory)
+sudo systemctl start fastapi-app      # Start the service
+sudo systemctl stop fastapi-app       # Stop the service
+sudo systemctl restart fastapi-app    # Restart the service
+sudo systemctl status fastapi-app     # Check service status
+sudo systemctl enable fastapi-app     # Enable auto-start on boot
+
+# View logs
+sudo journalctl -u fastapi-app -f     # Follow logs in real-time
+sudo journalctl -u fastapi-app --since "10 minutes ago"  # Recent logs
+```
+
+**Auto-restart behavior:**
+- **Development**: `--reload` flag restarts on file changes
+- **Production**: SystemD `Restart=always` automatically restarts on crashes
+- Service is created at `/etc/systemd/system/fastapi-app.service` by deploy script
+- Production uses Gunicorn with Uvicorn workers for better reliability
 
 ### Testing
 ```bash
@@ -46,47 +111,49 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 ## Architecture Overview
 
 ### Core Design Pattern
-This is a FastAPI application using OAuth2 Password Flow with JWT tokens for authentication. The architecture follows a layered approach:
+This is a FastAPI application using **fastapi-login** for authentication with cookie-based sessions. The architecture follows a layered approach:
 
 1. **Routers Layer** (`app/routers/`) - HTTP endpoints that handle requests/responses
-2. **Business Logic Layer** (`app/auth.py`, `app/security.py`) - Authentication logic and JWT handling
-3. **Data Layer** (`app/models.py`, `app/database.py`) - SQLModel ORM with SQLite database
-4. **Validation Layer** (`app/schemas.py`) - Pydantic models for request/response validation
+2. **Authentication Layer** (`app/login_manager.py`) - fastapi-login configuration and user management
+3. **Security Layer** (`app/security.py`) - CSRF protection and password reset tokens
+4. **Data Layer** (`app/models.py`, `app/database.py`) - SQLModel ORM with SQLite database
+5. **Validation Layer** (`app/schemas.py`) - Pydantic models for request/response validation
 
-### OAuth2 Authentication Implementation
+### FastAPI-Login Authentication Implementation
 
 #### Authentication Flow
 1. **User Registration** (`POST /auth/register`)
-   - Accepts: username, email, password, full_name
-   - Validates uniqueness of username and email
+   - Accepts: email, password, full_name
+   - Validates uniqueness of email
    - Hashes password using bcrypt with salt rounds
    - Stores user in SQLite database
    - Returns: UserResponse (without password)
 
-2. **User Login** (`POST /auth/token`)
-   - Accepts: OAuth2PasswordRequestForm (username, password)
+2. **User Login** (`POST /auth/token` for API, `POST /auth/login` for UI)
+   - Accepts: OAuth2PasswordRequestForm (username field contains email, password)
    - Authenticates against hashed password in database
-   - Generates JWT token with HS256 algorithm
-   - JWT payload contains: `{"sub": username, "exp": expiration_time}`
-   - Returns: `{"access_token": jwt_token, "token_type": "bearer"}`
+   - Creates JWT token using fastapi-login's LoginManager
+   - Sets HttpOnly cookie with token
+   - Supports "Remember Me" (30-day expiry vs standard session)
+   - Returns: `{"access_token": token, "token_type": "bearer"}` for API
 
 3. **Token Validation**
-   - Bearer token extracted from Authorization header
-   - JWT signature verified using SECRET_KEY
-   - Expiration time checked automatically
-   - User fetched from database using username in token
-   - Returns 401 if token invalid/expired
+   - fastapi-login automatically extracts token from cookie or header
+   - Token signature verified by LoginManager
+   - User loaded via `@manager.user_loader()` decorator
+   - Checks user.is_active flag automatically
+   - Returns 401 (InvalidCredentialsException) if invalid
 
 4. **Protected Endpoint Access**
-   - Use `Depends(get_current_active_user)` for authentication
-   - Automatically validates JWT and fetches user object
-   - Checks user.is_active flag before granting access
+   - Use `Depends(manager)` for authentication
+   - Automatically validates token and loads user object
+   - Support for optional authentication via `get_current_user_optional()`
 
 ### Key Dependencies and Their Roles
 - **SQLModel**: Type-safe ORM that combines SQLAlchemy with Pydantic
-- **python-jose[cryptography]**: JWT token creation and validation
+- **fastapi-login**: Complete authentication solution with JWT, session management, and remember-me
 - **passlib[bcrypt]**: Password hashing
-- **OAuth2PasswordBearer**: FastAPI's OAuth2 implementation for Bearer token authentication
+- **slowapi**: Rate limiting for authentication endpoints
 
 ### Database Session Management
 - Uses dependency injection via `get_session()` in `database.py`
@@ -97,6 +164,10 @@ This is a FastAPI application using OAuth2 Password Flow with JWT tokens for aut
 - Settings loaded from environment variables via `pydantic-settings`
 - Config cached using `@lru_cache()` decorator
 - Defaults provided in `app/config.py`, overridable via `.env` file
+- Key settings:
+  - `SECRET_KEY`: Used by fastapi-login for JWT signing
+  - `ACCESS_TOKEN_EXPIRE_MINUTES`: Default session duration (30 minutes)
+  - `ENVIRONMENT`: Controls cookie security settings
 
 ### Testing Architecture
 - Tests use in-memory SQLite database (via `StaticPool`)
@@ -110,6 +181,8 @@ This is a FastAPI application using OAuth2 Password Flow with JWT tokens for aut
 - Token expiration set to 30 minutes by default
 - User isolation enforced - users can only access their own data
 - Superuser flag for admin functionality
+- **CSRF Protection**: Double-submit cookie pattern implemented for all forms
+- **Environment-aware security**: Cookie secure flag automatically set based on environment
 
 ## API Endpoints Structure
 
@@ -162,62 +235,75 @@ This is a FastAPI application using OAuth2 Password Flow with JWT tokens for aut
 - **Requirements**: Valid JWT + user.is_superuser = true
 - **Response**: List of all users
 
-## OAuth2 Implementation Details
+## FastAPI-Login Implementation Details
 
 ### Core Components
 
-#### 1. Security Module (`app/security.py`)
-- **`verify_password(plain_password, hashed_password)`**: Bcrypt password verification
-- **`get_password_hash(password)`**: Bcrypt password hashing with salt
-- **`create_access_token(data, expires_delta)`**: JWT token generation
-- **`decode_token(token)`**: JWT token validation and decoding
+#### 1. Login Manager (`app/login_manager.py`)
+- **`manager`**: LoginManager instance configured with:
+  - Cookie name: "access-token"
+  - Support for both cookie and header authentication
+  - Configurable expiry (default 30 minutes, extendable to 30 days)
+- **`@manager.user_loader()`**: Decorator for loading users from database
+- **`authenticate_user(db, email, password)`**: User credential verification
+- **`get_current_user_optional(request, db)`**: Optional authentication for mixed routes
+- **`get_password_hash(password)`**: Bcrypt password hashing
+- **`verify_password(plain, hashed)`**: Password verification
 
-#### 2. Authentication Module (`app/auth.py`)
-- **`oauth2_scheme`**: OAuth2PasswordBearer instance for token extraction
-- **`authenticate_user(session, username, password)`**: User credential verification
-- **`get_current_user(token, session)`**: JWT validation and user retrieval
-- **`get_current_active_user(current_user)`**: Active user verification
-- **`get_current_user_from_cookie(request, session)`**: Cookie-based authentication for UI
-- **`get_current_user_optional(user)`**: Optional authentication dependency
+#### 2. Security Module (`app/security.py`)
+- **`generate_csrf_token()`**: Creates secure CSRF tokens
+- **`set_csrf_cookie(response, token)`**: Sets CSRF cookie
+- **`verify_csrf(request, form_token)`**: Validates CSRF tokens
+- **`sha256_hex(s)`**: Hashes password reset tokens
 
 #### 3. Configuration (`app/config.py`)
 Key environment variables:
-- `SECRET_KEY`: JWT signing key (min 32 characters for production)
-- `ALGORITHM`: JWT algorithm (default: "HS256")
-- `ACCESS_TOKEN_EXPIRE_MINUTES`: Token lifetime (default: 30)
+- `SECRET_KEY`: fastapi-login JWT signing key (min 32 characters for production)
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: Default session duration (30 minutes)
 - `DATABASE_URL`: SQLite connection string
+- `ENVIRONMENT`: Set to "production" for secure cookies over HTTPS
+- `RESEND_API_KEY`: Optional email service for password resets
+
+#### 4. CSRF Protection (`app/security.py`)
+- **`generate_csrf_token()`**: Creates secure random CSRF tokens
+- **`set_csrf_cookie(response, token)`**: Sets CSRF cookie (non-HttpOnly for JS access)
+- **`verify_csrf(request, form_token)`**: Validates CSRF token from form matches cookie
+- All UI forms require CSRF token in hidden field matching cookie value
 
 ### Authentication Methods
 
-#### 1. Bearer Token Authentication (API)
+#### 1. Required Authentication (API & UI)
 ```python
-from app.auth import get_current_active_user
+from app.login_manager import manager
 
 @router.get("/api/protected")
-async def api_endpoint(user: User = Depends(get_current_active_user)):
-    return {"message": f"Hello {user.username}"}
+async def api_endpoint(user: User = Depends(manager)):
+    return {"message": f"Hello {user.email}"}
 ```
 
-#### 2. Cookie Authentication (Web UI)
+#### 2. Optional Authentication (Mixed Routes)
 ```python
-from app.auth import get_current_user_from_cookie
-
-@router.get("/dashboard")
-async def web_page(user: Optional[User] = Depends(get_current_user_from_cookie)):
-    if not user:
-        return RedirectResponse("/login")
-    return templates.TemplateResponse("dashboard.html", {"user": user})
-```
-
-#### 3. Optional Authentication
-```python
-from app.auth import get_current_user_optional
+from app.login_manager import get_current_user_optional
 
 @router.get("/public")
 async def mixed_endpoint(user: Optional[User] = Depends(get_current_user_optional)):
     if user:
-        return {"message": f"Hello {user.username}"}
+        return {"message": f"Hello {user.email}"}
     return {"message": "Hello anonymous"}
+```
+
+#### 3. Remember Me Feature
+```python
+# In login handler
+if remember_me == "true":
+    expires = timedelta(days=30)  # Long-lived session
+else:
+    expires = timedelta(minutes=30)  # Standard session
+
+access_token = manager.create_access_token(
+    data={"sub": user.email},
+    expires=expires
+)
 ```
 
 ### Testing OAuth2 Authentication
@@ -258,20 +344,20 @@ print(response.json())
 
 ### Adding New Protected Endpoints
 ```python
-from app.auth import get_current_active_user
+from app.login_manager import manager
 from app.models import User
 
 @router.get("/protected")
-async def protected_route(current_user: User = Depends(get_current_active_user)):
+async def protected_route(current_user: User = Depends(manager)):
     return {"user": current_user}
 ```
 
 ### Adding Admin-Only Endpoints
 ```python
-from app.auth import get_current_active_user
+from app.login_manager import manager
 from fastapi import HTTPException, status
 
-async def get_admin_user(current_user: User = Depends(get_current_active_user)):
+async def get_admin_user(current_user: User = Depends(manager)):
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -290,21 +376,29 @@ async def delete_user(user_id: int, admin: User = Depends(get_admin_user)):
 2. Update `app/schemas.py` with corresponding Pydantic schemas
 3. Consider database migration strategy (currently recreates tables on startup)
 
-### Customizing Token Expiration
-```python
-from datetime import timedelta
+### Key Features Provided by FastAPI-Login
 
-# In your login endpoint
-access_token_expires = timedelta(hours=24)  # Custom expiration
-access_token = create_access_token(
-    data={"sub": user.username},
-    expires_delta=access_token_expires
-)
-```
+1. **Automatic Token Management**
+   - Token creation, validation, and decoding handled internally
+   - Support for both cookies and Authorization headers
+   - Configurable expiration times
 
-### Adding Refresh Tokens
-To implement refresh tokens:
-1. Create a new `refresh_token` field in the Token response model
-2. Generate a longer-lived refresh token in the login endpoint
-3. Add a `/auth/refresh` endpoint to exchange refresh tokens for new access tokens
-4. Store refresh tokens securely (consider Redis or database storage)
+2. **Remember Me Functionality**
+   - Extended session duration (30 days) when checkbox selected
+   - Secure cookie settings based on environment
+
+3. **User Loading**
+   - Decorator-based user loader (`@manager.user_loader()`)
+   - Automatic user fetching from database
+   - Active user validation
+
+4. **Security Features**
+   - HttpOnly cookies prevent XSS attacks
+   - Secure flag for HTTPS environments
+   - SameSite protection against CSRF
+   - Built-in exception handling
+
+5. **Rate Limiting** (via slowapi)
+   - Login: 10/minute (UI), 5/minute (API)
+   - Registration: 5/minute
+   - Password reset: 3/minute

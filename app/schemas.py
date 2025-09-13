@@ -4,9 +4,8 @@ from datetime import datetime
 
 
 class UserBase(BaseModel):
-    username: str
     email: EmailStr
-    full_name: Optional[str] = None
+    full_name: str
 
 
 class UserCreate(UserBase):
@@ -18,13 +17,15 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
 
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: int
+    email: EmailStr
+    full_name: str
     is_active: bool
     is_superuser: bool
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -39,4 +40,4 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
+    email: Optional[str] = None

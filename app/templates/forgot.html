@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Forgot Password - FastAPI Auth App{% endblock %}
+
+{% block content %}
+<div class="grid">
+    <div></div>
+    <article>
+        <header>
+            <hgroup>
+                <h2>Reset Your Password</h2>
+                <p>Enter your email address and we'll send you a reset link</p>
+            </hgroup>
+        </header>
+
+        <!-- Message container for HTMX responses -->
+        <div id="auth-message"></div>
+
+        <form hx-post="/auth/forgot"
+              hx-target="#auth-message">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+
+            <label for="email">
+                Email Address
+                <input type="email"
+                       id="email"
+                       name="email"
+                       required
+                       autofocus
+                       placeholder="Enter your email address"
+                       pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+                       title="Please enter a valid email address">
+            </label>
+
+            <button type="submit">
+                Send Reset Link
+            </button>
+        </form>
+
+        <nav>
+            <ul>
+                <li><a href="/login">Back to Login</a></li>
+            </ul>
+        </nav>
+    </article>
+    <div></div>
+</div>
+{% endblock %}

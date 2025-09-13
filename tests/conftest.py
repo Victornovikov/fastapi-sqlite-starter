@@ -24,6 +24,11 @@ def client_fixture(session: Session):
         return session
 
     app.dependency_overrides[get_session] = get_session_override
+
+    # Clear rate limiter cache before each test
+    if hasattr(app.state, 'limiter'):
+        app.state.limiter.reset()
+
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()

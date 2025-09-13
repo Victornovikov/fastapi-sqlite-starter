@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Reset Password - FastAPI Auth App{% endblock %}
+
+{% block content %}
+<div class="grid">
+    <div></div>
+    <article>
+        <header>
+            <hgroup>
+                <h2>Set New Password</h2>
+                <p>Enter your new password below</p>
+            </hgroup>
+        </header>
+
+        <!-- Message container for HTMX responses -->
+        <div id="auth-message"></div>
+
+        <form hx-post="/auth/reset"
+              hx-target="#auth-message">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="token" value="{{ token }}">
+
+            <label for="new_password">
+                New Password
+                <input type="password"
+                       id="new_password"
+                       name="new_password"
+                       required
+                       autofocus
+                       minlength="6"
+                       title="Password must be at least 6 characters long">
+            </label>
+
+            <label for="confirm_password">
+                Confirm Password
+                <input type="password"
+                       id="confirm_password"
+                       minlength="6"
+                       title="Please confirm your password">
+            </label>
+
+            <button type="submit">
+                Reset Password
+            </button>
+        </form>
+
+        <script>
+            // Simple client-side password confirmation
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const password = document.getElementById('new_password').value;
+                const confirm = document.getElementById('confirm_password').value;
+                if (password !== confirm) {
+                    e.preventDefault();
+                    document.getElementById('auth-message').innerHTML =
+                        '<article><mark style="background-color: var(--del-color); color: var(--del-text);">Passwords do not match</mark></article>';
+                }
+            });
+        </script>
+    </article>
+    <div></div>
+</div>
+{% endblock %}

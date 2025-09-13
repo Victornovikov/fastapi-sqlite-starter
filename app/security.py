@@ -1,42 +1,15 @@
-from datetime import datetime, timedelta
-from typing import Optional
+"""
+Security utilities for CSRF protection and password reset tokens.
+Password hashing and authentication are now handled by fastapi-login in login_manager.py
+"""
 import secrets
 import hashlib
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import logging
 from fastapi import HTTPException, Request, Response, status
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
-    return encoded_jwt
-
-
-def decode_token(token: str):
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        return payload
-    except JWTError:
-        return None
-
 
 # CSRF Protection Functions
 CSRF_COOKIE_NAME = "csrftoken"
@@ -63,6 +36,16 @@ def verify_csrf(request: Request, form_token: str):
     """Verify CSRF token matches between cookie and form submission"""
     cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
     if not cookie_token or not form_token or cookie_token != form_token:
+        # Get client IP for logging
+        from app.logging_config import get_client_ip, mask_sensitive_data
+        client_ip = get_client_ip(request)
+
+        logger.error(
+            f"CSRF validation failed: expected={mask_sensitive_data(cookie_token or 'none')}, "
+            f"received={mask_sensitive_data(form_token or 'none')}, ip={client_ip}, "
+            f"path={request.url.path}"
+        )
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF verification failed"

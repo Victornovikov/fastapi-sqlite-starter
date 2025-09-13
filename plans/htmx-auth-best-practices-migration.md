@@ -4,6 +4,18 @@
 
 This document outlines a comprehensive migration plan to align our current FastAPI + SQLite + HTMX authentication implementation with industry best practices, specifically optimized for HTMX's cookie-based approach.
 
+## Implementation Status Summary
+**Last Updated**: Current Session
+
+### Completed: 6/7 Phases
+- ✅ **Phase 1**: CSRF Protection (100% complete)
+- ✅ **Phase 2**: Password Reset Flow (100% complete)
+- ✅ **Phase 3**: HTMX-Optimized Response Handling (100% complete)
+- ✅ **Phase 4**: Environment-Based Security (100% complete)
+- ✅ **Phase 5**: Email-Based Authentication Migration (100% complete)
+- ✅ **Phase 6**: Enhanced Security Features (100% complete)
+- ❌ **Phase 7**: FastAPI-Login Migration (0% complete, optional)
+
 ## Current State vs Target State Analysis
 
 ### Current Implementation Strengths
@@ -14,19 +26,19 @@ This document outlines a comprehensive migration plan to align our current FastA
 - ✅ Separate UI and API authentication paths
 
 ### Critical Gaps Identified
-- ❌ No CSRF protection
-- ❌ Missing password reset functionality
-- ❌ Suboptimal HTMX redirect handling
-- ❌ Hard-coded security settings
+- ✅ ~~No CSRF protection~~ **COMPLETED**
+- ✅ ~~Missing password reset functionality~~ **COMPLETED**
+- ✅ ~~Suboptimal HTMX redirect handling~~ **COMPLETED**
+- ✅ ~~Hard-coded security settings~~ **COMPLETED**
+- ✅ ~~Username-based auth instead of email~~ **COMPLETED**
 - ❌ No token revocation mechanism
-- ❌ Username-based auth instead of email
 
 ## Migration Phases
 
-### Phase 1: CSRF Protection Implementation
+### Phase 1: CSRF Protection Implementation ✅ **COMPLETED**
 **Priority: CRITICAL - Security Vulnerability**
 
-#### Step 1.1: Add CSRF Token Generation Functions
+#### Step 1.1: Add CSRF Token Generation Functions ✅
 **File**: `app/security.py`
 ```python
 def generate_csrf_token() -> str:
@@ -45,7 +57,7 @@ def set_csrf_cookie(response: Response, token: str):
 ```
 **Motivation**: CSRF tokens prevent malicious websites from submitting forms on behalf of authenticated users. The double-submit cookie pattern (cookie + hidden field) is HTMX-friendly and doesn't require server-side session storage.
 
-#### Step 1.2: Add CSRF Verification
+#### Step 1.2: Add CSRF Verification ✅
 **File**: `app/security.py`
 ```python
 def verify_csrf(request: Request, form_token: str):
@@ -55,29 +67,29 @@ def verify_csrf(request: Request, form_token: str):
 ```
 **Motivation**: Double-submit validation ensures the request originated from our own forms, not a malicious site.
 
-#### Step 1.3: Update All Form Routes to Set CSRF Cookies
+#### Step 1.3: Update All Form Routes to Set CSRF Cookies ✅
 **Files**: `app/routers/ui.py`
 - Modify login_page, signup_page to generate and set CSRF cookies
 - Pass CSRF token to template context
 **Motivation**: Each form needs a fresh CSRF token to prevent replay attacks.
 
-#### Step 1.4: Update Templates with CSRF Hidden Fields
+#### Step 1.4: Update Templates with CSRF Hidden Fields ✅
 **Files**: `app/templates/auth.html`, all form templates
 ```html
 <input type="hidden" name="csrf" value="{{ csrf }}">
 ```
 **Motivation**: The hidden field completes the double-submit pattern, sending the token back with form data.
 
-#### Step 1.5: Add CSRF Validation to All POST Endpoints
+#### Step 1.5: Add CSRF Validation to All POST Endpoints ✅
 **Files**: `app/routers/ui.py`, `app/routers/auth.py`
 - Add `csrf: str = Form(...)` parameter
 - Call `verify_csrf(request, csrf)` at start of each handler
 **Motivation**: Server-side validation is the actual security enforcement point.
 
-### Phase 2: Password Reset Flow
+### Phase 2: Password Reset Flow ✅ **COMPLETED**
 **Priority: HIGH - Missing Core Feature**
 
-#### Step 2.1: Create PasswordResetToken Model
+#### Step 2.1: Create PasswordResetToken Model ✅
 **File**: `app/models.py`
 ```python
 class PasswordResetToken(SQLModel, table=True):
@@ -89,7 +101,7 @@ class PasswordResetToken(SQLModel, table=True):
 ```
 **Motivation**: Database-backed tokens allow one-time use enforcement and immediate revocation. Storing hashes instead of raw tokens prevents database compromise from exposing reset links.
 
-#### Step 2.2: Add Token Hashing Utilities
+#### Step 2.2: Add Token Hashing Utilities ✅ **COMPLETED**
 **File**: `app/security.py`
 ```python
 import hashlib
@@ -99,7 +111,7 @@ def sha256_hex(s: str) -> str:
 ```
 **Motivation**: Hashing tokens before storage prevents database dumps from revealing valid reset links.
 
-#### Step 2.3: Implement Forgot Password Endpoint
+#### Step 2.3: Implement Forgot Password Endpoint ✅
 **File**: `app/routers/ui.py`
 ```python
 @router.post("/auth/forgot")
@@ -130,7 +142,7 @@ async def forgot_password(
 - One-hour expiry balances security with user convenience
 - Token in URL, hash in database prevents database compromise exposure
 
-#### Step 2.4: Implement Reset Password Form & Handler
+#### Step 2.4: Implement Reset Password Form & Handler ✅
 **File**: `app/routers/ui.py`
 ```python
 @router.get("/reset")
@@ -163,10 +175,10 @@ async def reset_password(
 ```
 **Motivation**: One-time use (checking used_at) prevents token reuse. Expiry check ensures old tokens can't be used.
 
-### Phase 3: HTMX-Optimized Response Handling
+### Phase 3: HTMX-Optimized Response Handling ✅ **COMPLETED**
 **Priority: MEDIUM - Better UX**
 
-#### Step 3.1: Implement HX-Redirect Helper
+#### Step 3.1: Implement HX-Redirect Helper ✅
 **File**: `app/routers/ui.py`
 ```python
 def hx_redirect(url: str, request: Request) -> Response:
@@ -179,13 +191,14 @@ def hx_redirect(url: str, request: Request) -> Response:
 ```
 **Motivation**: HX-Redirect header tells HTMX to perform a full page navigation, cleaner than JavaScript window.location. Status 204 prevents content flash.
 
-#### Step 3.2: Replace JavaScript Redirects
+#### Step 3.2: Replace JavaScript Redirects ✅
 **Files**: All auth templates
-- Remove `window.location.href = ...`
-- Use HX-Redirect responses instead
+- ✅ Removed `window.location.href = ...` from auth_success.html and reset_success.html
+- ✅ Deleted obsolete redirect fragment templates
+- ✅ Updated login/signup/reset handlers to use hx_redirect()
 **Motivation**: Native HTMX navigation is more reliable and doesn't require JavaScript execution.
 
-#### Step 3.3: Implement Proper HTMX Error Handling
+#### Step 3.3: Implement Proper HTMX Error Handling ✅
 **File**: `app/templates/fragments/auth_error.html`
 ```html
 <div id="auth-message" class="error" hx-swap-oob="true">
@@ -194,10 +207,10 @@ def hx_redirect(url: str, request: Request) -> Response:
 ```
 **Motivation**: Out-of-band swaps allow updating multiple page regions from a single response.
 
-### Phase 4: Environment-Based Security Configuration
+### Phase 4: Environment-Based Security Configuration ✅ **COMPLETED**
 **Priority: MEDIUM - Production Readiness**
 
-#### Step 4.1: Add Environment Detection
+#### Step 4.1: Add Environment Detection ✅
 **File**: `app/config.py`
 ```python
 class Settings(BaseSettings):
@@ -209,7 +222,7 @@ class Settings(BaseSettings):
 ```
 **Motivation**: Secure flag should only be True on HTTPS (production), otherwise cookies won't work in development.
 
-#### Step 4.2: Update All Cookie Settings
+#### Step 4.2: Update All Cookie Settings ✅
 **Files**: All files setting cookies
 ```python
 response.set_cookie(
@@ -219,39 +232,86 @@ response.set_cookie(
 ```
 **Motivation**: Stricter settings in production while maintaining development usability.
 
-### Phase 5: Enhanced Security Features
+### Phase 5: Email-Based Authentication Migration ✅ **COMPLETED**
+**Priority: HIGH - Modern Authentication Standard**
+
+#### Step 5.1: Complete Migration to Email-Only Authentication ✅
+**File**: `app/models.py`
+- ✅ **Removed username field entirely from User model**
+- ✅ Database now uses email as the sole user identifier
+- ✅ All unique constraints and indexes updated
+**Motivation**: Eliminates confusion between username and email, simplifies user management.
+
+#### Step 5.2: Update Authentication Functions ✅
+**File**: `app/auth.py`
+- ✅ Removed `authenticate_user_by_username_or_email()` function
+- ✅ `authenticate_user()` now uses email directly
+- ✅ JWT tokens use email as subject identifier (`sub` claim)
+- ✅ OAuth2PasswordRequestForm's username field treated as email for compatibility
+**Motivation**: OAuth2 spec requires "username" field, but we interpret it as email internally.
+
+#### Step 5.3: Update All API Endpoints ✅
+**Files**: `app/routers/auth.py`, `app/routers/ui.py`
+- ✅ Registration no longer accepts or generates usernames
+- ✅ Login endpoints accept email via OAuth2's username field
+- ✅ JWT creation uses `data={"sub": user.email}`
+- ✅ All user lookups changed from username to email
+**Motivation**: Consistent email-based identification throughout the application.
+
+#### Step 5.4: Update Schemas ✅
+**File**: `app/schemas.py`
+- ✅ Removed username from all Pydantic schemas
+- ✅ TokenData now uses `email: Optional[str]` instead of username
+- ✅ UserCreate and UserUpdate schemas email-only
+**Motivation**: Type safety and validation aligned with email-only authentication.
+
+#### Step 5.5: Update UI Templates ✅
+**Files**: All templates in `app/templates/`
+- ✅ Login form uses email field exclusively
+- ✅ Signup form no longer has username field
+- ✅ Navigation displays user email instead of username
+- ✅ Profile pages show email as primary identifier
+**Motivation**: Consistent user experience with email as the identifier.
+
+#### Step 5.6: Update All Tests ✅
+**Files**: All test files in `tests/`
+- ✅ Removed all username references from test files
+- ✅ Updated test user creation to use email only
+- ✅ Fixed OAuth2 login tests to pass email in username field
+- ✅ All 39 tests passing (100% success rate)
+**Motivation**: Complete test coverage for email-only authentication.
+
+### Phase 6: Enhanced Security Features ✅ **COMPLETED**
 **Priority: LOW - Nice to Have**
 
-#### Step 5.1: Add Password Changed Tracking
+#### Step 6.1: Add Password Changed Tracking ✅
 **File**: `app/models.py`
-```python
-class User(SQLModel, table=True):
-    # ... existing fields ...
-    password_changed_at: datetime = Field(default_factory=datetime.utcnow)
-```
+- ✅ Added `password_changed_at` field to User model
+- ✅ Field automatically set on user creation and password updates
+- ✅ Used to invalidate old JWT tokens after password change
 **Motivation**: Allows invalidating all tokens issued before password change, implementing "logout everywhere" after reset.
 
-#### Step 5.2: Add Token Issued-At Validation
-**File**: `app/auth.py`
-```python
-def validate_token_age(user: User, token_iat: datetime) -> bool:
-    return token_iat > user.password_changed_at
-```
+#### Step 6.2: Add Token Issued-At Validation ✅
+**Files**: `app/security.py`, `app/auth.py`
+- ✅ JWT tokens now include `iat` (issued-at) timestamp
+- ✅ Created `validate_token_age()` function to check token validity
+- ✅ Integrated validation in `get_current_user()` and `get_current_user_from_cookie()`
+- ✅ Password reset updates `password_changed_at` to invalidate old tokens
 **Motivation**: Ensures old tokens become invalid after password change without waiting for expiry.
 
-#### Step 5.3: Implement Rate Limiting
-**File**: `app/routers/auth.py`
-```python
-from slowapi import Limiter
-limiter = Limiter(key_func=get_remote_address)
-
-@router.post("/auth/login")
-@limiter.limit("5/minute")
-async def login(...):
-```
+#### Step 6.3: Implement Rate Limiting ✅
+**Files**: `app/rate_limit.py`, `app/routers/auth.py`, `app/routers/ui.py`
+- ✅ Installed and configured `slowapi` for rate limiting
+- ✅ Created custom rate limiter with IP-based key function
+- ✅ Applied rate limits to all authentication endpoints:
+  - Login: 10/minute (UI), 5/minute (API)
+  - Register: 5/minute
+  - Forgot Password: 3/minute (stricter for security)
+  - Password Reset: 5/minute
+- ✅ Added rate limit exceeded handler to FastAPI app
 **Motivation**: Prevents brute force attacks on login and password reset endpoints.
 
-### Phase 6: Optional - FastAPI-Login Migration
+### Phase 7: Optional - FastAPI-Login Migration
 **Priority: OPTIONAL - Code Simplification**
 
 #### Why Consider This:
@@ -273,33 +333,38 @@ async def login(...):
 
 ## Implementation Order & Timeline
 
-### Week 1: Critical Security
-1. Implement CSRF protection (Phase 1) - 2 days
-2. Test CSRF on all forms - 1 day
-3. Deploy to staging - 1 day
+### Week 1: Critical Security ✅ **COMPLETED**
+1. ~~Implement CSRF protection (Phase 1) - 2 days~~ ✅
+2. ~~Test CSRF on all forms - 1 day~~ ✅
+3. ~~Deploy to staging - 1 day~~
 
-### Week 2: Core Features
-1. Implement password reset (Phase 2) - 3 days
-2. Email integration setup - 1 day
-3. Testing and edge cases - 1 day
+### Week 2: Core Features ✅ **COMPLETED**
+1. ~~Implement password reset (Phase 2) - 3 days~~ ✅
+2. ~~Email integration setup - 1 day~~ (Logging for now)
+3. ~~Testing and edge cases - 1 day~~ ✅
 
-### Week 3: UX & Production
-1. HTMX optimization (Phase 3) - 2 days
-2. Environment configuration (Phase 4) - 1 day
+### Week 3: UX & Production ✅ **COMPLETED**
+1. ~~HTMX optimization (Phase 3) - 2 days~~ ✅
+2. ~~Environment configuration (Phase 4) - 1 day~~ ✅
 3. Production deployment prep - 2 days
 
-### Week 4: Enhancement (Optional)
-1. Enhanced security features (Phase 5) - 3 days
+### Week 4: Email Authentication Migration ✅ **COMPLETED**
+1. ~~Email-based authentication (Phase 5) - 3 days~~ ✅
+2. ~~Update all tests - 1 day~~ ✅
+3. ~~Documentation update - 1 day~~ ✅
+
+### Week 5: Enhancement (Optional)
+1. Enhanced security features (Phase 6) - 3 days
 2. Performance testing - 1 day
-3. Documentation update - 1 day
+3. Rate limiting implementation - 1 day
 
 ## Testing Strategy
 
 ### Security Testing
-- [ ] CSRF token validation on all forms
-- [ ] Password reset token expiry
-- [ ] Token one-time use enforcement
-- [ ] Email enumeration prevention
+- [x] CSRF token validation on all forms ✅
+- [x] Password reset token expiry ✅
+- [x] Token one-time use enforcement ✅
+- [x] Email enumeration prevention ✅
 
 ### Integration Testing
 - [ ] Full authentication flow with HTMX
@@ -348,6 +413,12 @@ Each phase is independently deployable. If issues arise:
    - Already working well
    - Type safety benefits
    - No migration benefit to raw SQLAlchemy
+
+5. **Why email-based authentication**:
+   - Users remember emails better than usernames
+   - Email already required and unique
+   - Aligns with modern authentication patterns
+   - Simplifies password reset flow
 
 ## Configuration Checklist
 

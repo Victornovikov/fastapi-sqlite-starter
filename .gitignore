@@ -182,9 +182,12 @@ $RECYCLE.BIN/
 .nfs*
 
 # Runtime directories (created by deployment)
-logs/
+# (removed logs/ from here as it's now handled below)
 
 # Logs
+logs/*.log
+logs/*.log.*
+!logs/.gitkeep
 *.log
 npm-debug.log*
 yarn-debug.log*
