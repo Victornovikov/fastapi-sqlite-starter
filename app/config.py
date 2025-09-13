@@ -8,7 +8,13 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
-    
+    environment: str = "development"  # "development" or "production"
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Return True if cookies should use secure flag (HTTPS only)"""
+        return self.environment == "production"
+
     class Config:
         env_file = ".env"
         extra = "ignore"  # Ignore extra fields in .env file

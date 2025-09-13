@@ -10,7 +10,10 @@ from app.database import get_session
 from app.auth import authenticate_user, get_current_user_optional
 from app.models import User
 from app.schemas import UserCreate
-from app.security import create_access_token, get_password_hash
+from app.security import (
+    create_access_token, get_password_hash,
+    generate_csrf_token, set_csrf_cookie, verify_csrf
+)
 from app.config import get_settings
 
 from app.templates_config import templates

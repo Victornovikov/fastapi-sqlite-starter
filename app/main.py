@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
@@ -50,7 +50,10 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     # Check if the request expects JSON (API endpoints)
     if request.url.path.startswith("/auth/") or request.url.path.startswith("/users/"):
         # Return JSON for API endpoints
-        return {"detail": exc.detail}
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail}
+        )
     
     # Return HTML error page for UI routes
     if exc.status_code == 404:
