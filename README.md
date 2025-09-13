@@ -125,12 +125,12 @@ See [`tests/`](tests/) for test implementations and [`tests.md`](tests.md) for t
 ## 🔒 Security
 
 ### Production Checklist
-- [ ] Use HTTPS only
-- [ ] Set strong `SECRET_KEY` (32+ characters)
-- [ ] Configure proper CORS origins
-- [ ] Enable secure cookies (`secure=True`)
-- [ ] Implement rate limiting
-- [ ] Use PostgreSQL instead of SQLite
+- [x] Use HTTPS only (automatic with Cloudflare)
+- [x] Set strong `SECRET_KEY` (auto-generated in deployment)
+- [x] Configure proper CORS origins (set in deployment)
+- [x] Enable secure cookies (`secure=True`)
+- [x] Implement rate limiting (via Cloudflare)
+- [x] SQLite with WAL mode (production-ready for most apps)
 
 ### Authentication Flow
 1. User registers/logs in via UI or API
@@ -140,10 +140,65 @@ See [`tests/`](tests/) for test implementations and [`tests.md`](tests.md) for t
 
 See [`app/auth.py`](app/auth.py) for implementation details.
 
-## 🐳 Docker Deployment
+## 🚢 Production Deployment (Hetzner + Cloudflare)
+
+### Quick Deploy (10 minutes)
+
+Deploy directly to a Hetzner VPS with zero exposed ports using Cloudflare Tunnel:
+
+```bash
+# 1. Get a Cloudflare API token (free account)
+# Visit: https://dash.cloudflare.com/profile/api-tokens
+
+# 2. SSH to your server and clone your repo
+ssh root@your-server-ip
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+cd YOUR_REPO
+
+# 3. Run deployment script
+./deploy/deploy.sh --api-token YOUR_TOKEN
+
+# 4. Access your app at https://your-app.pages.dev (free domain)
+```
+
+### Features
+- **Runs directly with systemd** - Simple and reliable
+- **Zero exposed ports** (maximum security)
+- **Free SSL certificate** via Cloudflare
+- **DDoS protection** included
+- **Git-based updates** - Just `git pull` and restart
+- **SQLite with WAL mode** for production
+
+### Deployment Files
+- [`deploy/deploy.sh`](deploy/deploy.sh) - One-script deployment
+- [`deploy/systemd/fastapi-app.service`](deploy/systemd/fastapi-app.service) - Systemd service template
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) - Detailed deployment guide
+
+### Post-Deployment Commands
+```bash
+# Update application (super simple!)
+cd /your/repo/path
+git pull
+sudo systemctl restart fastapi-app
+
+# Check service status
+systemctl status fastapi-app
+
+# View logs
+journalctl -u fastapi-app -f
+
+# Check tunnel status
+systemctl status cloudflared
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment documentation.
+
+## 🐳 Docker Development
+
+For local Docker development:
 
 ```dockerfile
-FROM python:3.11-slim
+FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

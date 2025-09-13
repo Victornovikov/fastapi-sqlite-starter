@@ -1,0 +1,53 @@
+[Unit]
+Description=FastAPI Authentication Application
+After=network.target network-online.target
+Wants=network-online.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=appuser
+Group=appuser
+WorkingDirectory=/opt/fastapi-app
+
+# Environment configuration
+Environment="PATH=/opt/fastapi-app/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONPATH=/opt/fastapi-app"
+EnvironmentFile=/opt/fastapi-app/.env
+
+# Start command using Gunicorn with Uvicorn workers
+ExecStart=/opt/fastapi-app/venv/bin/gunicorn app.main:app \
+    --workers 2 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8000 \
+    --timeout 120 \
+    --keep-alive 5 \
+    --access-logfile /opt/fastapi-app/logs/access.log \
+    --error-logfile /opt/fastapi-app/logs/error.log \
+    --capture-output \
+    --enable-stdio-inheritance
+
+# Restart configuration
+Restart=always
+RestartSec=10
+StartLimitInterval=600
+StartLimitBurst=3
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/fastapi-app/data /opt/fastapi-app/logs /opt/fastapi-app/backups
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Process management
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
