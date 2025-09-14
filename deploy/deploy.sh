@@ -387,11 +387,22 @@ initialize_database() {
     # Set WAL mode for better concurrency
     if [[ -f ${APP_DIR}/app.db ]]; then
         sqlite3 ${APP_DIR}/app.db "PRAGMA journal_mode=WAL;"
-        chmod 600 ${APP_DIR}/app.db
+        # Set proper permissions - 664 allows owner and group to read/write
+        chmod 664 ${APP_DIR}/app.db
         chown ${APP_USER}:${APP_USER} ${APP_DIR}/app.db
         log_success "Database initialized with WAL mode"
     else
         log_warning "Database will be created on first access"
+    fi
+
+    # Also ensure any WAL files have proper permissions
+    if [[ -f ${APP_DIR}/app.db-wal ]]; then
+        chmod 664 ${APP_DIR}/app.db-wal
+        chown ${APP_USER}:${APP_USER} ${APP_DIR}/app.db-wal
+    fi
+    if [[ -f ${APP_DIR}/app.db-shm ]]; then
+        chmod 664 ${APP_DIR}/app.db-shm
+        chown ${APP_USER}:${APP_USER} ${APP_DIR}/app.db-shm
     fi
     
     # Restart service

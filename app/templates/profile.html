@@ -2,6 +2,29 @@
 
 {% block title %}Profile - FastAPI Auth App{% endblock %}
 
+{% block extra_head %}
+<script>
+    // Password validation
+    function validatePasswords() {
+        const newPass = document.getElementById('new_password').value;
+        const confirmPass = document.getElementById('confirm_password').value;
+        const matchIndicator = document.getElementById('password-match-indicator');
+
+        if (newPass && confirmPass) {
+            if (newPass === confirmPass) {
+                matchIndicator.textContent = '✓ Passwords match';
+                matchIndicator.style.color = 'var(--ins-color)';
+            } else {
+                matchIndicator.textContent = '✗ Passwords do not match';
+                matchIndicator.style.color = 'var(--del-color)';
+            }
+        } else {
+            matchIndicator.textContent = '';
+        }
+    }
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="grid">
     <div></div>
@@ -53,14 +76,64 @@
             <h3>Actions</h3>
             <div class="grid">
                 <button class="secondary" disabled>Edit Profile (Coming Soon)</button>
-                <button class="secondary" disabled>Change Password (Coming Soon)</button>
+                <button class="secondary" onclick="document.getElementById('change-password-modal').showModal()">Change Password</button>
             </div>
         </section>
-        
+
         <footer>
             <a href="/dashboard" role="button" class="outline">← Back to Dashboard</a>
         </footer>
     </article>
     <div></div>
 </div>
+
+<!-- Change Password Modal -->
+<dialog id="change-password-modal">
+    <article>
+        <header>
+            <h3>Change Password</h3>
+            <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">×</button>
+        </header>
+
+        <div id="password-message"></div>
+
+        <form id="change-password-form"
+              hx-post="/auth/change-password"
+              hx-target="#password-message"
+              hx-swap="innerHTML"
+              hx-on::after-request="if(event.detail.successful) { setTimeout(() => { document.getElementById('change-password-modal').close(); document.getElementById('change-password-form').reset(); }, 2000); }">
+
+            {% if csrf_token %}
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            {% else %}
+            <!-- CSRF token not provided - this will cause 422 error -->
+            <input type="hidden" name="csrf" value="">
+            {% endif %}
+
+            <label for="current_password">
+                Current Password
+                <input type="password" id="current_password" name="current_password" required>
+            </label>
+
+            <label for="new_password">
+                New Password
+                <input type="password" id="new_password" name="new_password"
+                       oninput="validatePasswords()" required minlength="8">
+                <small>Minimum 8 characters</small>
+            </label>
+
+            <label for="confirm_password">
+                Confirm New Password
+                <input type="password" id="confirm_password" name="confirm_password"
+                       oninput="validatePasswords()" required>
+                <small id="password-match-indicator"></small>
+            </label>
+
+            <div class="grid">
+                <button type="button" class="secondary" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit">Change Password</button>
+            </div>
+        </form>
+    </article>
+</dialog>
 {% endblock %}

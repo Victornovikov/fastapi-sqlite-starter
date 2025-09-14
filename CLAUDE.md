@@ -168,6 +168,14 @@ cp .env.example .env
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
+### 📋 Code Templates
+**ALWAYS check `templates_snippets.md` for verified code patterns before implementing new features.** This file contains tested templates for:
+- UI routes with CSRF protection
+- Form handling patterns
+- Database update patterns
+- Testing patterns
+- Common imports
+
 ## Architecture Overview
 
 ### ⚠️ CRITICAL: This is a Web App, NOT a REST API
@@ -425,6 +433,36 @@ headers = {"Authorization": f"Bearer {token}"}
 response = requests.get("http://localhost:8000/users/me", headers=headers)
 print(response.json())
 ```
+
+## Pre-Implementation Checklist
+
+Before implementing any new feature, verify:
+
+### For UI Routes (HTML/HTMX):
+- [ ] CSRF token generated in route handler
+- [ ] CSRF token passed to template context
+- [ ] CSRF cookie set in response
+- [ ] Form includes `<input type="hidden" name="csrf" value="{{ csrf_token }}">`
+- [ ] Route handler verifies CSRF with `verify_csrf(request, csrf)`
+- [ ] Error responses use HTML fragments (not JSON)
+- [ ] Check existing similar routes for patterns to follow
+
+### For Database Changes:
+- [ ] Database operations wrapped in proper session handling
+- [ ] Use `session.get(User, id)` for fresh instance in updates
+- [ ] Consider permissions: database file must be writable by `appuser`
+- [ ] Test with both development and SystemD service
+
+### For Authentication:
+- [ ] Use `Depends(manager)` for required auth
+- [ ] Use `get_current_user_optional` for optional auth
+- [ ] Test with multiple users (separate TestClient instances)
+
+### Before Deployment:
+- [ ] Run tests locally
+- [ ] Restart SystemD service after changes
+- [ ] Check logs for errors: `tail -f /opt/fastapi-sqlite/logs/app.log`
+- [ ] Verify database permissions: `ls -la /opt/fastapi-sqlite/app.db*`
 
 ## Common Development Tasks
 
