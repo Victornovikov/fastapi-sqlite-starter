@@ -252,3 +252,13 @@ docs/.doctrees/
 secrets/
 credentials/
 *.secret
+
+# Testing artifacts
+cookies.txt
+*.cookie
+*.cookies
+*cookies.txt
+
+# Curl/wget artifacts
+*.curl
+*.wget

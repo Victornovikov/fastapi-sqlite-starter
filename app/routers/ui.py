@@ -111,14 +111,23 @@ async def profile_page(
     """Render the profile page"""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-    
-    return templates.TemplateResponse(
+
+    # Generate CSRF token for change password form
+    csrf_token = generate_csrf_token()
+
+    response = templates.TemplateResponse(
         "profile.html",
         {
             "request": request,
             "user": current_user,
+            "csrf_token": csrf_token,
         }
     )
+
+    # Set CSRF cookie
+    set_csrf_cookie(response, csrf_token)
+
+    return response
 
 
 @router.post("/logout", response_class=HTMLResponse)
@@ -481,4 +490,103 @@ async def handle_reset_password(
 
     # Return HTMX-aware redirect to login
     return hx_redirect("/login", request)
+
+
+@router.post("/auth/change-password", response_class=HTMLResponse)
+@auth_limiter.limit("5/minute")
+async def handle_change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    csrf: str = Form(...),
+    current_user: User = Depends(manager),
+    session: Session = Depends(get_session)
+):
+    """Handle password change for authenticated users"""
+    client_ip = get_ip_from_request(request)
+    logger.info(f"Password change attempt: email={current_user.email}, ip={client_ip}")
+
+    # Verify CSRF token
+    try:
+        verify_csrf(request, csrf)
+    except Exception as e:
+        logger.error(f"CSRF validation failed on change password: email={current_user.email}, ip={client_ip}, error={str(e)}")
+        return templates.TemplateResponse(
+            "fragments/auth_error.html",
+            {
+                "request": request,
+                "error": "Security validation failed. Please refresh and try again."
+            }
+        )
+
+    # Verify current password
+    from app.login_manager import verify_password
+    if not verify_password(current_password, current_user.hashed_password):
+        logger.warning(f"Password change failed - incorrect current password: email={current_user.email}, ip={client_ip}")
+        return templates.TemplateResponse(
+            "fragments/auth_error.html",
+            {
+                "request": request,
+                "error": "Current password is incorrect"
+            }
+        )
+
+    # Check if new passwords match
+    if new_password != confirm_password:
+        logger.warning(f"Password change failed - passwords don't match: email={current_user.email}, ip={client_ip}")
+        return templates.TemplateResponse(
+            "fragments/auth_error.html",
+            {
+                "request": request,
+                "error": "New passwords do not match"
+            }
+        )
+
+    # Validate password strength (minimum 8 characters)
+    if len(new_password) < 8:
+        logger.warning(f"Password change failed - password too short: email={current_user.email}, ip={client_ip}")
+        return templates.TemplateResponse(
+            "fragments/auth_error.html",
+            {
+                "request": request,
+                "error": "New password must be at least 8 characters long"
+            }
+        )
+
+    # Check if new password is different from current
+    if verify_password(new_password, current_user.hashed_password):
+        logger.warning(f"Password change failed - same as current: email={current_user.email}, ip={client_ip}")
+        return templates.TemplateResponse(
+            "fragments/auth_error.html",
+            {
+                "request": request,
+                "error": "New password must be different from current password"
+            }
+        )
+
+    # Update password - need to get fresh user from DB for proper session handling
+    db_user = session.get(User, current_user.id)
+    if not db_user:
+        return templates.TemplateResponse(
+            "fragments/auth_error.html",
+            {
+                "request": request,
+                "error": "User not found"
+            }
+        )
+
+    db_user.hashed_password = get_password_hash(new_password)
+    session.add(db_user)
+    session.commit()
+
+    logger.info(f"Password changed successfully: email={current_user.email}, ip={client_ip}")
+
+    # Return success message
+    return templates.TemplateResponse(
+        "fragments/password_change_success.html",
+        {
+            "request": request
+        }
+    )
 
