@@ -13,10 +13,10 @@
         if (newPass && confirmPass) {
             if (newPass === confirmPass) {
                 matchIndicator.textContent = '✓ Passwords match';
-                matchIndicator.style.color = 'var(--ins-color)';
+                matchIndicator.style.color = 'var(--pico-color-green-500)';
             } else {
                 matchIndicator.textContent = '✗ Passwords do not match';
-                matchIndicator.style.color = 'var(--del-color)';
+                matchIndicator.style.color = 'var(--pico-color-red-500)';
             }
         } else {
             matchIndicator.textContent = '';
@@ -49,9 +49,9 @@
                 <dt>Account Status</dt>
                 <dd>
                     {% if user.is_active %}
-                        <mark style="background-color: var(--ins-color); color: var(--ins-text);">Active</mark>
+                        <ins>Active</ins>
                     {% else %}
-                        <mark style="background-color: var(--del-color); color: var(--del-text);">Inactive</mark>
+                        <del>Inactive</del>
                     {% endif %}
                 </dd>
                 
@@ -91,8 +91,8 @@
 <dialog id="change-password-modal">
     <article>
         <header>
+            <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()"></button>
             <h3>Change Password</h3>
-            <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">×</button>
         </header>
 
         <div id="password-message"></div>

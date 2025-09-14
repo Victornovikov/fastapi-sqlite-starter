@@ -176,6 +176,35 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 - Testing patterns
 - Common imports
 
+## UI Framework: Pico CSS v2
+
+This application uses **Pico CSS v2** for all styling. Key points:
+
+### Version
+- **Using Pico CSS v2.0+** (NOT v1)
+- CDN: `https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css`
+- All CSS variables use the `pico-` prefix (v2 convention)
+
+### Key Principles
+1. **Semantic HTML First**: Pico styles HTML elements without classes
+2. **Minimal Custom CSS**: Only for the theme toggle button positioning
+3. **No Class Pollution**: Use Pico's semantic patterns, not custom classes
+4. **Responsive by Default**: Container and grid handle all breakpoints
+
+### Common Pico v2 Patterns Used
+- **Dialogs**: Use `<dialog>` element with empty close button (no × character)
+- **Status Indicators**: Use `<ins>` for success, `<del>` for removed/inactive
+- **Forms**: Wrap in `<fieldset>` with `<legend>` for proper spacing
+- **Loading**: Use `aria-busy="true"` attribute for loading states
+- **Containers**: Use `.container` for responsive padding
+- **Grids**: Use `.grid` for responsive columns
+
+### Important Notes
+- Close buttons in dialogs should be empty: `<button aria-label="Close" rel="prev"></button>`
+- Don't use custom colors like `var(--ins-color)`, use Pico variables: `var(--pico-color-green-500)`
+- Forms automatically style without classes - just use proper HTML structure
+- See `/opt/fastapi-sqlite/pico_ui_readme.md` for complete Pico v2 reference
+
 ## Architecture Overview
 
 ### ⚠️ CRITICAL: This is a Web App, NOT a REST API
@@ -463,6 +492,158 @@ Before implementing any new feature, verify:
 - [ ] Restart SystemD service after changes
 - [ ] Check logs for errors: `tail -f /opt/fastapi-sqlite/logs/app.log`
 - [ ] Verify database permissions: `ls -la /opt/fastapi-sqlite/app.db*`
+
+## Troubleshooting & Common Issues
+
+### ⚠️ IMPORTANT: Testing Changes in Production
+
+**NEVER run the app directly with uvicorn in production!** The app runs via SystemD service.
+
+#### Correct Way to Test Changes:
+```bash
+# After making code changes:
+sudo systemctl restart fastapi-app
+
+# Check service status:
+sudo systemctl status fastapi-app
+
+# View logs if there are issues:
+sudo journalctl -u fastapi-app -f    # Real-time logs
+sudo journalctl -u fastapi-app -n 100 # Last 100 lines
+
+# Check application logs:
+tail -f /opt/fastapi-sqlite/logs/app.log
+tail -f /opt/fastapi-sqlite/logs/error.log
+```
+
+#### Test UI Changes:
+```bash
+# Check if service is running and test endpoints:
+curl http://localhost:8000/
+curl http://localhost:8000/login
+
+# Check specific HTML elements:
+curl -s http://localhost:8000/ | grep pico
+```
+
+### ⚠️ Permission Issues (Very Common!)
+
+**The app runs as `appuser`, not root!** All files must be accessible by `appuser`.
+
+#### Fix Ownership Issues:
+```bash
+# Fix all app files ownership (run as root):
+sudo chown -R appuser:appuser /opt/fastapi-sqlite
+
+# Fix specific common permission problems:
+sudo chown appuser:appuser /opt/fastapi-sqlite/.env
+sudo chown appuser:appuser /opt/fastapi-sqlite/app.db
+sudo chown appuser:appuser /opt/fastapi-sqlite/app.db-wal
+sudo chown appuser:appuser /opt/fastapi-sqlite/app.db-shm
+sudo chown -R appuser:appuser /opt/fastapi-sqlite/logs
+
+# Set correct permissions:
+sudo chmod 600 /opt/fastapi-sqlite/.env
+sudo chmod 664 /opt/fastapi-sqlite/app.db*
+sudo chmod 664 /opt/fastapi-sqlite/logs/*.log
+```
+
+#### Common Permission Error Symptoms:
+- `PermissionError: [Errno 13] Permission denied: '.env'`
+- `sqlite3.OperationalError: unable to open database file`
+- Service keeps restarting with exit code 3
+- Logs show "Permission denied" errors
+
+### Service Won't Start
+
+#### Debug Steps:
+1. Check service status:
+   ```bash
+   sudo systemctl status fastapi-app
+   ```
+
+2. Check error logs:
+   ```bash
+   sudo journalctl -u fastapi-app -n 50
+   tail -50 /opt/fastapi-sqlite/logs/error.log
+   ```
+
+3. Most common causes:
+   - **Permission issues** (see above)
+   - **Port 8000 already in use**: Kill any process using it
+   - **Missing .env file**: Check if exists and has correct permissions
+   - **Python dependency issues**: Reinstall requirements
+
+4. Fix port conflicts:
+   ```bash
+   # Find what's using port 8000:
+   sudo lsof -i :8000
+
+   # Kill the process (replace PID with actual process ID):
+   sudo kill -9 PID
+
+   # Then restart service:
+   sudo systemctl restart fastapi-app
+   ```
+
+### After Code Changes
+
+**ALWAYS do these steps after modifying code:**
+
+1. **Fix permissions** (if you created/modified files as root):
+   ```bash
+   sudo chown -R appuser:appuser /opt/fastapi-sqlite
+   ```
+
+2. **Restart the service**:
+   ```bash
+   sudo systemctl restart fastapi-app
+   ```
+
+3. **Verify it's running**:
+   ```bash
+   sudo systemctl status fastapi-app
+   ```
+
+4. **Check for errors**:
+   ```bash
+   sudo journalctl -u fastapi-app -n 20
+   ```
+
+### Quick Health Check Script
+
+Save this as `/opt/fastapi-sqlite/health_check.sh`:
+```bash
+#!/bin/bash
+echo "=== FastAPI App Health Check ==="
+echo ""
+echo "1. Service Status:"
+sudo systemctl status fastapi-app --no-pager | head -10
+echo ""
+echo "2. Port 8000 Status:"
+sudo lsof -i :8000 || echo "Port 8000 is free"
+echo ""
+echo "3. Recent Errors:"
+sudo journalctl -u fastapi-app -n 5 --no-pager | grep -i error || echo "No recent errors"
+echo ""
+echo "4. File Permissions:"
+ls -la /opt/fastapi-sqlite/.env
+ls -la /opt/fastapi-sqlite/app.db* 2>/dev/null || echo "Database not yet created"
+echo ""
+echo "5. App Response:"
+curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:8000/
+echo "=== Check Complete ==="
+```
+
+Make it executable: `chmod +x /opt/fastapi-sqlite/health_check.sh`
+
+### Remember These Key Points
+
+1. **NEVER** run `uvicorn` directly in production - use SystemD
+2. **ALWAYS** check/fix file ownership after making changes
+3. **ALWAYS** restart service with `sudo systemctl restart fastapi-app`
+4. **NEVER** edit files as root without fixing ownership afterward
+5. **CHECK** logs with `journalctl` not by running the app directly
 
 ## Common Development Tasks
 
