@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 from app.models import User
 from app.config import get_settings
@@ -23,7 +23,7 @@ def test_remember_me_sets_longer_expiry(client: TestClient, session: Session):
 
     # Get CSRF token
     login_page = client.get("/login")
-    csrf_token = login_page.cookies.get("csrf")
+    csrf_token = login_page.cookies.get("csrftoken")
 
     # Login with remember_me
     response = client.post(
@@ -34,7 +34,7 @@ def test_remember_me_sets_longer_expiry(client: TestClient, session: Session):
             "remember_me": "true",
             "csrf": csrf_token
         },
-        headers={"Cookie": f"csrf={csrf_token}"}
+        headers={"HX-Request": "true", "Cookie": f"csrftoken={csrf_token}"}
     )
 
     assert response.status_code == 204
@@ -45,8 +45,8 @@ def test_remember_me_sets_longer_expiry(client: TestClient, session: Session):
     payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
 
     # Check that expiry is approximately 30 days from now
-    exp_time = datetime.fromtimestamp(payload["exp"])
-    now = datetime.utcnow()
+    exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    now = datetime.now(timezone.utc)
     difference = exp_time - now
 
     # Should be close to 30 days (allowing for small processing time)
@@ -67,7 +67,7 @@ def test_no_remember_me_sets_standard_expiry(client: TestClient, session: Sessio
 
     # Get CSRF token
     login_page = client.get("/login")
-    csrf_token = login_page.cookies.get("csrf")
+    csrf_token = login_page.cookies.get("csrftoken")
 
     # Login without remember_me
     response = client.post(
@@ -77,7 +77,7 @@ def test_no_remember_me_sets_standard_expiry(client: TestClient, session: Sessio
             "password": "standardpass123",
             "csrf": csrf_token
         },
-        headers={"Cookie": f"csrf={csrf_token}"}
+        headers={"HX-Request": "true", "Cookie": f"csrftoken={csrf_token}"}
     )
 
     assert response.status_code == 204
@@ -88,8 +88,8 @@ def test_no_remember_me_sets_standard_expiry(client: TestClient, session: Sessio
     payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
 
     # Check that expiry is standard duration
-    exp_time = datetime.fromtimestamp(payload["exp"])
-    now = datetime.utcnow()
+    exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    now = datetime.now(timezone.utc)
     difference = exp_time - now
 
     # Should be close to configured minutes (default 30)
@@ -114,7 +114,7 @@ def test_remember_me_false_string_sets_standard_expiry(client: TestClient, sessi
 
     # Get CSRF token
     login_page = client.get("/login")
-    csrf_token = login_page.cookies.get("csrf")
+    csrf_token = login_page.cookies.get("csrftoken")
 
     # Login with remember_me="false"
     response = client.post(
@@ -125,7 +125,7 @@ def test_remember_me_false_string_sets_standard_expiry(client: TestClient, sessi
             "remember_me": "false",
             "csrf": csrf_token
         },
-        headers={"Cookie": f"csrf={csrf_token}"}
+        headers={"HX-Request": "true", "Cookie": f"csrftoken={csrf_token}"}
     )
 
     assert response.status_code == 204
@@ -136,8 +136,8 @@ def test_remember_me_false_string_sets_standard_expiry(client: TestClient, sessi
     payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
 
     # Check that expiry is standard duration (not 30 days)
-    exp_time = datetime.fromtimestamp(payload["exp"])
-    now = datetime.utcnow()
+    exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    now = datetime.now(timezone.utc)
     difference = exp_time - now
 
     # Should be minutes, not days
@@ -158,7 +158,7 @@ def test_cookie_max_age_matches_token_expiry(client: TestClient, session: Sessio
 
     # Get CSRF token
     login_page = client.get("/login")
-    csrf_token = login_page.cookies.get("csrf")
+    csrf_token = login_page.cookies.get("csrftoken")
 
     # Test with remember_me
     response = client.post(
@@ -169,7 +169,7 @@ def test_cookie_max_age_matches_token_expiry(client: TestClient, session: Sessio
             "remember_me": "true",
             "csrf": csrf_token
         },
-        headers={"Cookie": f"csrf={csrf_token}"}
+        headers={"HX-Request": "true", "Cookie": f"csrftoken={csrf_token}"}
     )
 
     # Check Set-Cookie header for max-age
@@ -212,8 +212,8 @@ def test_api_login_ignores_remember_me(client: TestClient, session: Session):
 
     # Decode token to check standard expiry
     payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
-    exp_time = datetime.fromtimestamp(payload["exp"])
-    now = datetime.utcnow()
+    exp_time = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    now = datetime.now(timezone.utc)
     difference = exp_time - now
 
     # Should always be standard duration for API
@@ -237,7 +237,7 @@ def test_remember_me_survives_server_restart(client: TestClient, session: Sessio
 
     # Get CSRF token
     login_page = client.get("/login")
-    csrf_token = login_page.cookies.get("csrf")
+    csrf_token = login_page.cookies.get("csrftoken")
 
     # Login with remember_me
     response = client.post(
@@ -248,7 +248,7 @@ def test_remember_me_survives_server_restart(client: TestClient, session: Sessio
             "remember_me": "true",
             "csrf": csrf_token
         },
-        headers={"Cookie": f"csrf={csrf_token}"}
+        headers={"HX-Request": "true", "Cookie": f"csrftoken={csrf_token}"}
     )
 
     token = response.cookies.get("access-token")

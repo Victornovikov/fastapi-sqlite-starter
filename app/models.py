@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class User(SQLModel, table=True):
@@ -10,8 +10,8 @@ class User(SQLModel, table=True):
     hashed_password: str
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class PasswordResetToken(SQLModel, table=True):
@@ -21,4 +21,4 @@ class PasswordResetToken(SQLModel, table=True):
     token_hash: str = Field(index=True, unique=True)  # SHA256 of actual token
     expires_at: datetime
     used_at: Optional[datetime] = None  # Track if token has been used
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

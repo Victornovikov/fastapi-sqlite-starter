@@ -96,6 +96,66 @@ pytest tests/ --cov=app --cov-report=html
 pytest tests/ -n auto
 ```
 
+#### ⚠️ Critical Testing Guidelines
+
+**MUST READ before modifying tests or authentication code:**
+
+**Remember: This is a WEB APP with cookies, not a REST API with headers!**
+
+1. **Cookie Isolation for Multiple Users**
+   - NEVER use the same TestClient for different users in tests
+   - Each user MUST have their own TestClient instance to prevent cookie contamination
+   ```python
+   # ✅ CORRECT
+   alice_client = TestClient(client.app)
+   bob_client = TestClient(client.app)
+
+   # ❌ WRONG - causes security test failures
+   # Using same client for both users causes cookie overwrite
+   ```
+
+2. **Database Engine Override**
+   - In `load_user()` or any function needing test database access:
+   ```python
+   # ✅ CORRECT - respects test database override
+   import app.database
+   db = Session(app.database.engine)
+
+   # ❌ WRONG - bypasses test database
+   from app.database import engine
+   ```
+
+3. **Rate Limits in Tests**
+   - Registration: 5/minute limit
+   - Login: 10/minute limit
+   - Password reset: 3/minute limit
+   - Tests MUST stay under these limits or explicitly reset the rate limiter
+
+4. **Datetime Handling**
+   - Always use `datetime.now(timezone.utc)` not `datetime.utcnow()`
+   - SQLite stores naive datetimes - handle accordingly in tests
+
+5. **CSRF Token Consistency**
+   - Always use cookie name: `csrftoken` (not `csrf`)
+   - Ensure consistency between app code and tests
+
+See `tests.md` for comprehensive testing documentation and troubleshooting.
+
+### Common Misconceptions to Avoid
+
+1. **"It's a REST API"** - No, it's a web app with HTML/HTMX as the primary interface
+2. **"Use Authorization headers"** - Web browsers use cookies; headers are for API clients
+3. **"Return JSON errors"** - UI routes should return HTML fragments with error messages
+4. **"Tokens in localStorage"** - This app uses secure HttpOnly cookies, not localStorage
+5. **"Stateless authentication"** - This uses server-side sessions via JWT in cookies
+
+### When Working on This App
+
+- **For UI features**: Think HTML responses, CSRF tokens, cookie auth
+- **For API features**: Think JSON responses, optional header auth
+- **For testing**: Each user needs their own TestClient (cookies don't isolate)
+- **For auth flow**: Check cookies first, then headers (fastapi-login's behavior)
+
 ### Environment Setup
 ```bash
 # Install dependencies
@@ -109,6 +169,24 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
 ## Architecture Overview
+
+### ⚠️ CRITICAL: This is a Web App, NOT a REST API
+
+**This is a cookie-based HTMX web application**, not a typical REST API. Understanding this is crucial:
+
+1. **Primary Interface**: HTML pages with HTMX for dynamic updates
+2. **Authentication**: Cookie-based sessions (not JWT in headers)
+3. **API Endpoints**: Secondary - mainly for compatibility/mobile apps
+4. **Form Submissions**: Use CSRF tokens and return HTML fragments
+5. **User Experience**: Server-side rendered with progressive enhancement
+
+### Why This Matters
+
+- **Cookies are primary**: The app uses `access-token` cookies for auth, not Authorization headers
+- **HTMX drives interactions**: Forms submit via HTMX, expecting HTML fragments or HX-Redirect headers
+- **UI routes return HTML**: `/login`, `/dashboard`, `/profile` return HTML pages, not JSON
+- **API routes are secondary**: `/auth/token` exists for API compatibility but the web UI uses `/auth/login`
+- **fastapi-login behavior**: Cookies take precedence over headers when both are present
 
 ### Core Design Pattern
 This is a FastAPI application using **fastapi-login** for authentication with cookie-based sessions. The architecture follows a layered approach:
@@ -154,6 +232,14 @@ This is a FastAPI application using **fastapi-login** for authentication with co
 - **fastapi-login**: Complete authentication solution with JWT, session management, and remember-me
 - **passlib[bcrypt]**: Password hashing
 - **slowapi**: Rate limiting for authentication endpoints
+
+### Important Module Locations
+Key functions and where to find them (for imports):
+- `verify_password`, `get_password_hash`, `authenticate_user` → `app.login_manager`
+- `generate_csrf_token`, `verify_csrf`, `sha256_hex` → `app.security`
+- `User`, `PasswordResetToken` models → `app.models`
+- `get_session`, `engine` → `app.database`
+- Rate limiters → `app.rate_limit`
 
 ### Database Session Management
 - Uses dependency injection via `get_session()` in `database.py`

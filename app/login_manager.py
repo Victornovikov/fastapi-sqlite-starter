@@ -53,12 +53,19 @@ def load_user(email: str) -> Optional[User]:
     when a valid token is presented.
     """
     # Create a new session for this request
-    from app.database import engine
-    db = Session(engine)
+    # Import the module to access the potentially overridden engine
+    import app.database
+    db = Session(app.database.engine)
+
+    logger.debug(f"load_user called with email: {email}, engine: {id(app.database.engine)}")
 
     try:
+        # Ensure we get fresh data - important for tests with multiple users
+        db.expire_all()
+
         statement = select(User).where(User.email == email)
         user = db.exec(statement).first()
+        logger.debug(f"load_user found user: {user.email if user else None}")
 
         # Check if user is active
         if user and not user.is_active:
@@ -104,8 +111,9 @@ async def get_current_user_optional(request: Request, db: Session = Depends(get_
         if not token:
             return None
 
-        # Decode the token and get the user
-        payload = manager.decode_token(token)
+        # Decode the token using JWT directly
+        import jwt
+        payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
         if not payload:
             return None
 

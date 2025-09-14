@@ -134,15 +134,16 @@ create_user() {
 # Configure firewall
 configure_firewall() {
     log_info "Configuring UFW firewall..."
-    
+
     ufw --force disable
     ufw default deny incoming
     ufw default allow outgoing
     ufw allow ssh
     ufw allow 22/tcp
+    ufw allow 60000:61000/udp  # Allow mosh for mobile shell connections
     echo "y" | ufw --force enable
-    
-    log_success "Firewall configured (SSH only, no exposed web ports)"
+
+    log_success "Firewall configured (SSH, mosh enabled, no exposed web ports)"
 }
 
 # Configure fail2ban
@@ -172,13 +173,21 @@ EOF
 # Create required directories (ones not in git)
 create_runtime_directories() {
     log_info "Creating runtime directories..."
-    
+
     # Create logs directory for application logs
     mkdir -p ${APP_DIR}/logs
-    
+
+    # Create log files with proper permissions to avoid permission errors
+    touch ${APP_DIR}/logs/app.log
+    touch ${APP_DIR}/logs/access.log
+    touch ${APP_DIR}/logs/error.log
+
     # Set ownership for the entire repo to app user
     chown -R ${APP_USER}:${APP_USER} ${APP_DIR}
-    
+
+    # Ensure log files have write permissions for app user
+    chmod 664 ${APP_DIR}/logs/*.log
+
     log_success "Runtime directories created"
 }
 
@@ -213,39 +222,67 @@ setup_python_env() {
 # Generate environment file
 generate_env_file() {
     log_info "Generating production environment file..."
-    
+
     # Generate secure keys
     SECRET_KEY=$(openssl rand -hex 32)
-    SESSION_SECRET=$(openssl rand -hex 32)
-    
-    # Determine domain
+
+    # Determine domain and email settings
     if [[ -z "$DOMAIN" ]]; then
         # Generate random subdomain for pages.dev
         RANDOM_NAME="${APP_NAME}-$(openssl rand -hex 4)"
         DOMAIN="${RANDOM_NAME}.pages.dev"
         log_info "Using free domain: ${DOMAIN}"
+        EMAIL_FROM="noreply@${DOMAIN}"
     else
         log_info "Using custom domain: ${DOMAIN}"
+        EMAIL_FROM="noreply@${DOMAIN}"
     fi
-    
+
+    # Determine reset URL base
+    RESET_URL_BASE="https://${DOMAIN}/reset"
+
     cat > ${APP_DIR}/.env <<EOF
 # Production Environment Configuration
-SECRET_KEY=${SECRET_KEY}
-SESSION_SECRET=${SESSION_SECRET}
+
+# Core settings
 DATABASE_URL=sqlite:///${APP_DIR}/app.db
-HTTPS_ONLY=true
-ALGORITHM=HS256
+SECRET_KEY=${SECRET_KEY}
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
+ENVIRONMENT=production
+
+# Email settings (configure these with your actual API keys)
+RESEND_API_KEY=
+EMAIL_FROM=${EMAIL_FROM}
+EMAIL_FROM_NAME=FastAPI App
+RESET_URL_BASE=${RESET_URL_BASE}
+
+# Optional webhook secret for Resend
+RESEND_WEBHOOK_SECRET=
+
+# Logging settings
+LOG_LEVEL=INFO
+LOG_DIR=${APP_DIR}/logs
+LOG_FILE=app.log
+LOG_MAX_BYTES=5242880
+LOG_BACKUP_COUNT=5
+LOG_TO_CONSOLE=true
+
+# Optional AI integrations (add your API keys if needed)
+OPENAI_API_KEY=
+
+# CORS settings (comma-separated list of allowed origins)
 CORS_ORIGINS=https://${DOMAIN}
+
+# App domain
 APP_DOMAIN=${DOMAIN}
 APP_DIR=${APP_DIR}
 EOF
 
     chmod 600 ${APP_DIR}/.env
     chown ${APP_USER}:${APP_USER} ${APP_DIR}/.env
-    
+
     log_success "Environment file generated"
+    log_warning "Remember to add your API keys (RESEND_API_KEY, OPENAI_API_KEY, etc.) to ${APP_DIR}/.env"
 }
 
 # Create systemd service for FastAPI

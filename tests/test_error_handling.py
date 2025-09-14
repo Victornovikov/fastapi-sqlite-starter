@@ -29,7 +29,7 @@ def test_401_unauthorized_json_for_api(client: TestClient):
     assert "application/json" in response.headers["content-type"]
     data = response.json()
     assert "detail" in data
-    assert "Invalid authentication credentials" in data["detail"]
+    assert "Invalid credentials" in data["detail"]
 
 
 def test_422_validation_error_json(client: TestClient):
@@ -54,7 +54,7 @@ def test_rate_limit_exceeded_error(client: TestClient):
     """Test that rate limit errors are handled properly"""
     # Get CSRF token once
     login_page = client.get("/login")
-    csrf_token = login_page.cookies.get("csrf")
+    csrf_token = login_page.cookies.get("csrftoken")
 
     # Make many rapid requests to trigger rate limit
     for i in range(15):  # Rate limit is 10/minute for login
@@ -65,7 +65,7 @@ def test_rate_limit_exceeded_error(client: TestClient):
                 "password": "wrongpass",
                 "csrf": csrf_token
             },
-            headers={"Cookie": f"csrf={csrf_token}"}
+            headers={"Cookie": f"csrftoken={csrf_token}"}
         )
 
         if response.status_code == 429:
@@ -129,7 +129,7 @@ def test_invalid_token_format_error(client: TestClient):
         )
         assert response.status_code == 401
         data = response.json()
-        assert "Invalid authentication credentials" in data["detail"]
+        assert "Invalid credentials" in data["detail"]
 
 
 def test_expired_token_error_message(client: TestClient, session: Session):
@@ -160,14 +160,14 @@ def test_expired_token_error_message(client: TestClient, session: Session):
 
     assert response.status_code == 401
     data = response.json()
-    assert "Invalid authentication credentials" in data["detail"]
+    assert "Invalid credentials" in data["detail"]
 
 
 def test_forgot_password_always_returns_success(client: TestClient, session: Session):
     """Test that forgot password always returns success to prevent email enumeration"""
     # Get CSRF token
     forgot_page = client.get("/forgot")
-    csrf_token = forgot_page.cookies.get("csrf")
+    csrf_token = forgot_page.cookies.get("csrftoken")
 
     # Test with non-existent email
     response = client.post(
@@ -176,7 +176,7 @@ def test_forgot_password_always_returns_success(client: TestClient, session: Ses
             "email": "nonexistent@example.com",
             "csrf": csrf_token
         },
-        headers={"Cookie": f"csrf={csrf_token}"}
+        headers={"Cookie": f"csrftoken={csrf_token}"}
     )
 
     assert response.status_code == 200
@@ -197,7 +197,7 @@ def test_forgot_password_always_returns_success(client: TestClient, session: Ses
             "email": "existing@example.com",
             "csrf": csrf_token
         },
-        headers={"Cookie": f"csrf={csrf_token}"}
+        headers={"Cookie": f"csrftoken={csrf_token}"}
     )
 
     assert response.status_code == 200

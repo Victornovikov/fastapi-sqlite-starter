@@ -48,7 +48,27 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         f"Rate limit exceeded: path={request.url.path}, ip={client_ip}, "
         f"limit={exc.detail}"
     )
-    return await _rate_limit_exceeded_handler(request, exc)
+
+    # Check if this is a UI endpoint that expects HTML
+    if request.url.path.startswith("/auth/") or request.url.path in ["/login", "/signup", "/forgot-password", "/reset-password"]:
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(
+            content="""
+            <!DOCTYPE html>
+            <html>
+            <head><title>Rate Limit Exceeded</title></head>
+            <body>
+                <h1>Too Many Requests</h1>
+                <p>You have made too many requests. Please wait a moment and try again.</p>
+                <p><a href="/">Go back</a></p>
+            </body>
+            </html>
+            """,
+            status_code=429
+        )
+
+    # For API endpoints, return JSON
+    return _rate_limit_exceeded_handler(request, exc)
 
 # Add rate limit exceeded handler
 app.add_exception_handler(RateLimitExceeded, rate_limit_handler)

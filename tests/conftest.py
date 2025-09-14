@@ -25,6 +25,12 @@ def client_fixture(session: Session):
 
     app.dependency_overrides[get_session] = get_session_override
 
+    # Also override the engine used by login_manager's load_user function
+    # This is needed because load_user creates its own session
+    from app import database
+    original_engine = database.engine
+    database.engine = session.bind
+
     # Clear rate limiter cache before each test
     if hasattr(app.state, 'limiter'):
         app.state.limiter.reset()
@@ -32,3 +38,6 @@ def client_fixture(session: Session):
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()
+
+    # Restore original engine
+    database.engine = original_engine

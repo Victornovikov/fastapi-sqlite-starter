@@ -17,6 +17,11 @@ async def read_users_me(
     request: Request,
     current_user: User = Depends(manager)
 ):
+    # Debug token extraction
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        token = auth_header.replace("Bearer ", "")
+        logger.debug(f"Token in header: {token[:50]}...")
     logger.info(f"Profile accessed: user={current_user.email}")
     return current_user
 

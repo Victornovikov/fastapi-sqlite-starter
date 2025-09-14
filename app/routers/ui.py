@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlmodel import Session, select
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 import logging
 
@@ -131,8 +131,8 @@ async def logout(
     if current_user:
         logger.info(f"User logged out: email={current_user.email}")
     response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    # Use fastapi-login to clear the cookie
-    response.delete_cookie(key=manager.cookie_name, path="/", secure=manager.cookie_secure, httponly=True)
+    # Clear the cookie
+    response.delete_cookie(key=manager.cookie_name, path="/", httponly=True)
     return response
 
 
@@ -189,13 +189,13 @@ async def handle_login(
     # Create response with HTMX-aware redirect
     response = hx_redirect("/dashboard", request)
 
-    # Set cookie using fastapi-login with appropriate max_age
+    # Set cookie with appropriate max_age matching token expiry
     response.set_cookie(
         key=manager.cookie_name,
         value=access_token,
         max_age=int(expires.total_seconds()),
         httponly=True,
-        secure=manager.cookie_secure,
+        secure=settings.environment == "production",
         samesite="lax"
     )
 
@@ -255,16 +255,24 @@ async def handle_signup(
     session.refresh(db_user)
 
     # Create access token using fastapi-login
+    expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = manager.create_access_token(
         data={"sub": db_user.email},
-        expires=timedelta(minutes=settings.access_token_expire_minutes)
+        expires=expires
     )
 
     # Create response with HTMX-aware redirect
     response = hx_redirect("/dashboard", request)
 
-    # Set cookie using fastapi-login
-    manager.set_cookie(response, access_token)
+    # Set cookie with appropriate max_age matching token expiry
+    response.set_cookie(
+        key=manager.cookie_name,
+        value=access_token,
+        max_age=int(expires.total_seconds()),
+        httponly=True,
+        secure=settings.environment == "production",
+        samesite="lax"
+    )
 
     logger.info(
         f"Web signup successful: email={email}, full_name={full_name}, ip={client_ip}"
@@ -331,7 +339,7 @@ async def handle_forgot_password(
         reset_token = PasswordResetToken(
             user_id=user.id,
             token_hash=sha256_hex(raw_token),
-            expires_at=datetime.utcnow() + timedelta(hours=1)
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1)
         )
         session.add(reset_token)
         session.commit()
@@ -378,7 +386,7 @@ async def reset_password_page(
         select(PasswordResetToken)
         .where(PasswordResetToken.token_hash == token_hash)
         .where(PasswordResetToken.used_at.is_(None))
-        .where(PasswordResetToken.expires_at > datetime.utcnow())
+        .where(PasswordResetToken.expires_at > datetime.now(timezone.utc))
     ).first()
 
     if not reset_token:
@@ -437,7 +445,7 @@ async def handle_reset_password(
         select(PasswordResetToken)
         .where(PasswordResetToken.token_hash == token_hash)
         .where(PasswordResetToken.used_at.is_(None))
-        .where(PasswordResetToken.expires_at > datetime.utcnow())
+        .where(PasswordResetToken.expires_at > datetime.now(timezone.utc))
     ).first()
 
     if not reset_token:
@@ -465,7 +473,7 @@ async def handle_reset_password(
     user.hashed_password = get_password_hash(new_password)
 
     # Mark token as used
-    reset_token.used_at = datetime.utcnow()
+    reset_token.used_at = datetime.now(timezone.utc)
 
     session.commit()
 
