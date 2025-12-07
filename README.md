@@ -1,8 +1,8 @@
-# FastAPI + SQLite + HTMX + Resend Template
+# FastAPI + SQLite + HTMX Starter Template
 
 A modern, production-ready web application template combining FastAPI backend with HTMX-powered frontend for seamless user interactions.
 
-## 🚀 Features
+## Features
 
 ### Authentication & Security
 - **JWT Cookie Authentication** - Secure httpOnly cookies for web UI
@@ -13,11 +13,11 @@ A modern, production-ready web application template combining FastAPI backend wi
 - **Role-based Access Control** with admin/superuser support
 
 ### Frontend
-- **HTMX-Powered UI** for dynamic, SPA-like experience
-- **Responsive Forms** with real-time validation and error handling
-- **Pico CSS** for clean, modern styling
+- **HTMX-Powered UI** for dynamic, SPA-like experience without JavaScript complexity
+- **Pico CSS** for clean, modern styling with no build step
 - **Template Fragments** for efficient partial page updates
-- Pages: Login/Signup, Dashboard, Profile, Password Reset (forgot/reset)
+- **Dark/Light Theme** toggle with localStorage persistence
+- Pages: Landing, Login/Signup, Dashboard, Profile, Items, Password Reset
 
 ### Backend Architecture
 - **FastAPI** with async/await support
@@ -25,21 +25,27 @@ A modern, production-ready web application template combining FastAPI backend wi
 - **SQLite Database** with automatic table creation
 - **Dependency Injection** for clean, testable code
 - **Environment-based Configuration** with .env support
+- **Optional LLM Integration** with OpenAI API support
 
-### Testing
+### Example CRUD (Items)
+- Full CRUD operations with both HTML (HTMX) and JSON API endpoints
+- User-scoped data access
+- Ready to customize for your use case
+
+### Developer Tools
 - Comprehensive test suite with pytest
-- In-memory database for isolated testing
-- CSRF protection tests
-- Authentication flow tests
-- Password reset tests
-- Admin access tests
+- Setup script for quick project initialization
+- Admin promotion script
+- Centralized logging with rotation
 
-## 📦 Installation
+## Quick Start
+
+### 1. Clone and Setup
 
 ```bash
 # Clone the repository
 git clone <your-repo-url>
-cd fastapi-sqlite-htmx-resend
+cd fastapi-sqlite-starter
 
 # Create virtual environment
 python -m venv venv
@@ -48,49 +54,144 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy environment variables
-cp .env.example .env
-
-# Generate a secure secret key
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-# Add the generated key to .env as SECRET_KEY
+# Run setup script (creates .env, initializes database)
+python scripts/setup.py
 ```
 
-## 🔧 Configuration
+### 2. Configure Environment
 
-Edit `.env` file:
+Edit `.env` file with your settings:
 
 ```env
 SECRET_KEY=your-secure-secret-key-here
 DATABASE_URL=sqlite:///./app.db
 ENVIRONMENT=development
-ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# For password reset emails
-RESEND_API_KEY=re_xxx_change_this
-EMAIL_FROM=Your App <noreply@yourdomain.com>
-EMAIL_FROM_NAME=Your App Name
-RESET_URL_BASE=https://yourdomain.com/reset
+# For password reset emails (optional)
+RESEND_API_KEY=re_xxx_your_key
+EMAIL_FROM=noreply@yourdomain.com
 
-# Optional: Webhook verification
-RESEND_WEBHOOK_SECRET=whsec_xxx_change_this
+# For LLM features (optional)
+OPENAI_API_KEY=sk-xxx_your_key
 ```
 
-## 🏃 Running the Application
+### 3. Run the Application
 
-### Development Mode
 ```bash
+# Development mode with auto-reload
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Production Mode
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 Visit: http://localhost:8000
 
-## 🧪 Testing
+## Project Structure
+
+```
+├── app/
+│   ├── routers/           # API and UI routes
+│   │   ├── auth.py        # Authentication endpoints
+│   │   ├── users.py       # User management
+│   │   ├── items.py       # Example CRUD router
+│   │   └── ui.py          # HTMX UI routes
+│   ├── templates/         # Jinja2 templates
+│   │   ├── fragments/     # HTMX partial templates
+│   │   └── *.html         # Page templates
+│   ├── config.py          # Settings from environment
+│   ├── models.py          # SQLModel database models
+│   ├── schemas.py         # Pydantic validation schemas
+│   ├── database.py        # Database configuration
+│   ├── security.py        # CSRF and security utilities
+│   ├── login_manager.py   # JWT authentication
+│   ├── email_client.py    # Resend email integration
+│   ├── llm_service.py     # OpenAI/LLM integration
+│   ├── logging_config.py  # Centralized logging
+│   └── main.py            # FastAPI application
+├── scripts/
+│   ├── setup.py           # Project setup script
+│   ├── promote_to_admin.py # Admin promotion script
+│   └── list_admins.py     # List admin users
+├── tests/                 # Test suite
+├── requirements.txt       # Python dependencies
+├── .env.example          # Environment template
+└── README.md
+```
+
+## API Endpoints
+
+### Public Endpoints
+- `GET /` - Landing page
+- `GET /login` - Login/signup page
+- `POST /auth/register` - API user registration
+- `POST /auth/token` - API login (returns JWT)
+- `POST /auth/login` - Web UI login (sets cookie)
+- `POST /auth/signup` - Web UI registration
+- `POST /auth/forgot` - Request password reset
+- `POST /auth/reset` - Reset password with token
+
+### Protected Endpoints
+- `GET /dashboard` - User dashboard
+- `GET /profile` - User profile settings
+- `GET /items` - Items list page
+- `POST /items/add` - Create item (HTMX)
+- `DELETE /items/{id}` - Delete item (HTMX)
+- `GET /api/items` - Items JSON API
+- `POST /api/items` - Create item JSON API
+- `GET /users/me` - Get current user
+- `POST /users/update-profile` - Update profile (HTMX)
+
+### Admin Endpoints
+- `GET /users/` - List all users (admin only)
+
+## Customization
+
+### Adding a New Model
+
+1. Define model in `app/models.py`:
+```python
+class YourModel(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    # ... your fields
+```
+
+2. Add schemas in `app/schemas.py`
+3. Create router in `app/routers/yourmodel.py` (copy items.py as template)
+4. Register router in `app/main.py`
+5. Create templates as needed
+
+### Using the LLM Service
+
+```python
+from app.llm_service import get_llm_service
+
+llm = get_llm_service()
+if llm:
+    response = await llm.chat([
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello!"}
+    ])
+    
+    # Or for JSON responses:
+    data = await llm.complete_json(
+        "Return a JSON object with name and age fields",
+        system_prompt="You are a data generator."
+    )
+```
+
+### HTMX Form Pattern
+
+```html
+<form hx-post="/your/endpoint" 
+      hx-target="#result" 
+      hx-swap="innerHTML">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="text" name="field" required>
+    <button type="submit">Submit</button>
+</form>
+<div id="result"></div>
+```
+
+## Testing
 
 ```bash
 # Run all tests
@@ -99,98 +200,46 @@ pytest tests/ -v
 # Run with coverage
 pytest tests/ --cov=app --cov-report=html
 
-# Run specific test
-pytest tests/test_auth.py::test_login -v
+# Run specific test file
+pytest tests/test_auth.py -v
 ```
 
-## 📁 Project Structure
+## Scripts
 
-```
-├── app/
-│   ├── routers/        # API and UI routes
-│   │   ├── auth.py     # Authentication endpoints
-│   │   ├── users.py    # User management
-│   │   └── ui.py       # HTMX UI routes
-│   ├── templates/      # Jinja2 templates
-│   │   ├── fragments/  # HTMX partial templates
-│   │   └── *.html      # Page templates
-│   ├── auth.py         # Authentication logic
-│   ├── security.py     # Security utilities
-│   ├── models.py       # SQLModel database models
-│   ├── schemas.py      # Pydantic validation schemas
-│   ├── database.py     # Database configuration
-│   └── main.py         # FastAPI application
-├── tests/              # Test suite
-├── requirements.txt    # Python dependencies
-└── .env.example       # Environment variables template
+### Setup Script
+```bash
+# Interactive setup
+python scripts/setup.py
+
+# Non-interactive (for CI/CD)
+python scripts/setup.py --no-interactive
 ```
 
-## 🔑 API Endpoints
-
-### Public Endpoints
-- `POST /auth/register` - API user registration
-- `POST /auth/token` - API login (returns JWT for Bearer auth)
-- `POST /auth/login` - Web UI login (sets httpOnly JWT cookie)
-- `POST /auth/signup` - Web UI registration (sets httpOnly JWT cookie)
-- `POST /auth/forgot` - Request password reset
-- `POST /auth/reset` - Reset password with token
-- `POST /logout` - Clear authentication cookie
-
-### Protected Endpoints
-- `GET /users/me` - Get current user profile
-- `PUT /users/me` - Update current user profile
-- `GET /users/` - List all users (admin only)
-
-### UI Routes
-- `/` - Landing page
-- `/login` - Login/Signup page
-- `/dashboard` - User dashboard (protected)
-- `/profile` - User profile (protected)
-- `/forgot` - Password reset request
-- `/reset` - Password reset form
-
-## 🛠️ Development Tips
-
-### Adding Protected Endpoints
-```python
-from app.auth import get_current_active_user
-
-@router.get("/protected")
-async def protected_route(user: User = Depends(get_current_active_user)):
-    return {"message": f"Hello {user.username}"}
+### Promote User to Admin
+```bash
+python scripts/promote_to_admin.py admin@example.com
 ```
 
-### Authentication Methods
+## Production Deployment
 
-The template supports dual authentication methods:
+1. Set strong `SECRET_KEY` in environment
+2. Set `ENVIRONMENT=production`
+3. Enable HTTPS
+4. Consider PostgreSQL for production database
+5. Set proper CORS origins in `app/main.py`
 
-1. **Web UI (Cookie-based)**: JWT stored in secure httpOnly cookies with CSRF protection
-2. **API (Token-based)**: JWT returned as Bearer token for API clients (OAuth2-compatible)
+## Tech Stack
 
-### Using HTMX Fragments
-```python
-@router.post("/auth/login", response_class=HTMLResponse)
-async def handle_login(request: Request, email: str = Form(...),
-                      password: str = Form(...), csrf: str = Form(...)):
-    # Verify CSRF, authenticate user
-    verify_csrf(request, csrf)
-    user = authenticate_user(session, email, password)
+| Component | Technology |
+|-----------|------------|
+| Backend | FastAPI |
+| Database | SQLite + SQLModel |
+| Auth | JWT + bcrypt |
+| Frontend | Jinja2 + HTMX |
+| Styling | Pico CSS |
+| Email | Resend |
+| LLM | OpenAI (optional) |
 
-    if user:
-        # Create JWT and set cookie with HTMX redirect
-        response = hx_redirect("/dashboard", request)
-        response.set_cookie("access_token", token, httponly=True,
-                          secure=settings.cookie_secure, samesite="lax")
-        return response
-
-    return templates.TemplateResponse("fragments/auth_error.html",
-                                    {"error": "Invalid credentials"})
-```
-
-## 📝 License
+## License
 
 MIT License - Feel free to use this template for your projects!
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.

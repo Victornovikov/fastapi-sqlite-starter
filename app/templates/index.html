@@ -1,25 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}Home - FastAPI Auth App{% endblock %}
+{% block title %}Welcome - FastAPI App{% endblock %}
+{% block description %}A modern, production-ready web application template with authentication, HTMX, and more{% endblock %}
 
 {% block content %}
 <article>
     <header>
         <hgroup>
-            <h1>Welcome to FastAPI Auth</h1>
-            <p>A modern authentication system built with FastAPI, JWT tokens, and a beautiful UI</p>
+            <h1>Welcome to FastAPI App</h1>
+            <p>A modern, production-ready web application template</p>
         </hgroup>
     </header>
     
     <section>
         <h2>Features</h2>
         <ul>
-            <li>🔐 Secure JWT-based authentication</li>
-            <li>🚀 Fast and modern Python backend</li>
-            <li>🎨 Clean UI with Pico CSS</li>
-            <li>⚡ Dynamic updates with HTMX</li>
-            <li>🛡️ Password hashing with bcrypt</li>
-            <li>📱 Responsive design</li>
+            <li>🔐 Secure JWT authentication with cookie support</li>
+            <li>📧 Email integration with Resend for password reset</li>
+            <li>🎨 Beautiful UI with Pico CSS (no build step)</li>
+            <li>⚡ Dynamic interactions with HTMX</li>
+            <li>🤖 Optional LLM/OpenAI integration ready</li>
+            <li>📱 Fully responsive design</li>
+            <li>🛡️ CSRF protection built-in</li>
+            <li>📝 Example CRUD with Items model</li>
         </ul>
     </section>
     
@@ -42,21 +45,39 @@
             <header>
                 <h3>1. Register</h3>
             </header>
-            <p>Create your account with a username, email, and secure password.</p>
+            <p>Create your account with email and a secure password. Your data is protected with bcrypt hashing.</p>
         </article>
         
         <article>
             <header>
-                <h3>2. Login</h3>
+                <h3>2. Authenticate</h3>
             </header>
-            <p>Sign in with your credentials to receive a secure JWT token.</p>
+            <p>Sign in to receive a secure JWT token stored in httpOnly cookies for maximum security.</p>
         </article>
         
         <article>
             <header>
-                <h3>3. Access</h3>
+                <h3>3. Build</h3>
             </header>
-            <p>Use your token to access protected resources and manage your profile.</p>
+            <p>Use the included Item model as a template to build your own features with full CRUD support.</p>
+        </article>
+    </div>
+</section>
+
+<section>
+    <h2>Tech Stack</h2>
+    <div class="grid">
+        <article>
+            <header><strong>Backend</strong></header>
+            <p>FastAPI + SQLModel + SQLite</p>
+        </article>
+        <article>
+            <header><strong>Frontend</strong></header>
+            <p>Jinja2 + HTMX + Pico CSS</p>
+        </article>
+        <article>
+            <header><strong>Auth</strong></header>
+            <p>JWT + bcrypt + CSRF</p>
         </article>
     </div>
 </section>

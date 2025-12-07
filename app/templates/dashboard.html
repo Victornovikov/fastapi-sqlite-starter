@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - FastAPI Auth App{% endblock %}
+{% block title %}Dashboard - FastAPI App{% endblock %}
 
 {% block content %}
 <hgroup>
@@ -8,6 +8,7 @@
     <p>Welcome to your dashboard</p>
 </hgroup>
 
+<!-- Quick Stats -->
 <section>
     <h3>Quick Stats</h3>
     <div class="grid">
@@ -16,7 +17,11 @@
                 <strong>Account Status</strong>
             </header>
             <p>
-                <ins>Active</ins>
+                {% if user.is_active %}
+                    <ins>Active</ins>
+                {% else %}
+                    <del>Inactive</del>
+                {% endif %}
             </p>
         </article>
         
@@ -29,21 +34,51 @@
         
         <article>
             <header>
-                <strong>Profile</strong>
+                <strong>Your Items</strong>
             </header>
-                                <p>
-                        <a href="/profile">
-                            View Profile →
-                        </a>
-                    </p>
+            <p>
+                <a href="/items">{{ item_count if item_count is defined else 0 }} items →</a>
+            </p>
         </article>
     </div>
 </section>
 
+<!-- Recent Items Preview -->
 <section>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin-bottom: 0;">Recent Items</h3>
+        <a href="/items" role="button" class="outline" style="padding: 0.5rem 1rem;">View All</a>
+    </div>
+    
+    {% if recent_items %}
+        {% for item in recent_items[:3] %}
+        <article>
+            <header>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>{{ item.title }}</strong>
+                    <small>{{ item.created_at.strftime('%b %d') }}</small>
+                </div>
+            </header>
+            {% if item.content %}
+            <p>{{ item.content[:100] }}{% if item.content|length > 100 %}...{% endif %}</p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    {% else %}
+        <article>
+            <p style="text-align: center; color: var(--pico-muted-color);">
+                No items yet. <a href="/items">Create your first item</a>
+            </p>
+        </article>
+    {% endif %}
+</section>
+
+<!-- Quick Actions -->
+<section>
+    <h3>Quick Actions</h3>
     <div class="grid">
-        <a href="/profile" role="button">Manage Profile</a>
-        <button hx-post="/logout" class="secondary">Logout</button>
+        <a href="/items" role="button">Manage Items</a>
+        <a href="/profile" role="button" class="secondary">Edit Profile</a>
     </div>
 </section>
 {% endblock %}

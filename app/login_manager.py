@@ -6,7 +6,7 @@ from fastapi import Request, Response, Depends
 from fastapi_login import LoginManager
 from fastapi_login.exceptions import InvalidCredentialsException
 from sqlmodel import Session, select
-from passlib.context import CryptContext
+import bcrypt
 import logging
 
 from app.models import User
@@ -16,9 +16,6 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Create LoginManager instance
 from datetime import timedelta
@@ -36,12 +33,18 @@ manager = LoginManager(
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hashed password."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(
+        plain_password.encode('utf-8'),
+        hashed_password.encode('utf-8')
+    )
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
+    """Hash a password using bcrypt."""
+    return bcrypt.hashpw(
+        password.encode('utf-8'),
+        bcrypt.gensalt()
+    ).decode('utf-8')
 
 
 @manager.user_loader()

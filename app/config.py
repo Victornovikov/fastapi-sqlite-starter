@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     environment: str = "development"  # "development" or "production"
 
-    # Email settings
+    # Email settings (Resend)
     resend_api_key: Optional[SecretStr] = None
     email_from: EmailStr = "noreply@example.com"
     email_from_name: str = "FastAPI App"
@@ -28,10 +28,24 @@ class Settings(BaseSettings):
     log_backup_count: int = 5
     log_to_console: bool = True
 
+    # LLM / OpenAI Configuration (Optional)
+    openai_api_key: Optional[SecretStr] = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    llm_model: str = "gpt-4o-mini"
+    llm_temperature: float = 0.7
+    llm_max_tokens: int = 4000
+    llm_timeout: int = 30
+    llm_max_retries: int = 2
+
     @property
     def cookie_secure(self) -> bool:
         """Return True if cookies should use secure flag (HTTPS only)"""
         return self.environment == "production"
+
+    @property
+    def llm_enabled(self) -> bool:
+        """Return True if LLM is configured"""
+        return self.openai_api_key is not None
 
     class Config:
         env_file = ".env"

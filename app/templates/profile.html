@@ -36,16 +36,34 @@
             </hgroup>
         </header>
         
+        <!-- Profile Information -->
+        <section>
+            <h3>Profile Information</h3>
+            <form id="profile-form" hx-post="/users/update-profile" hx-target="#profile-message">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                
+                <div class="grid">
+                    <label>
+                        Full Name
+                        <input type="text" name="full_name" value="{{ user.full_name }}" required>
+                    </label>
+                    
+                    <label>
+                        Email
+                        <input type="email" value="{{ user.email }}" disabled>
+                        <small>Email cannot be changed</small>
+                    </label>
+                </div>
+                
+                <button type="submit">Update Profile</button>
+            </form>
+            <div id="profile-message"></div>
+        </section>
+
+        <!-- Account Details -->
         <section>
             <h3>Account Details</h3>
-            
             <dl>
-                <dt>Email</dt>
-                <dd><strong>{{ user.email }}</strong></dd>
-
-                <dt>Full Name</dt>
-                <dd>{{ user.full_name }}</dd>
-                
                 <dt>Account Status</dt>
                 <dd>
                     {% if user.is_active %}
@@ -66,18 +84,13 @@
                 
                 <dt>Member Since</dt>
                 <dd>{{ user.created_at.strftime('%B %d, %Y at %I:%M %p') if user.created_at else 'Unknown' }}</dd>
-                
-                <dt>Last Updated</dt>
-                <dd>{{ user.updated_at.strftime('%B %d, %Y at %I:%M %p') if user.updated_at else 'Never' }}</dd>
             </dl>
         </section>
         
+        <!-- Security -->
         <section>
-            <h3>Actions</h3>
-            <div class="grid">
-                <button class="secondary" disabled>Edit Profile (Coming Soon)</button>
-                <button class="secondary" onclick="document.getElementById('change-password-modal').showModal()">Change Password</button>
-            </div>
+            <h3>Security</h3>
+            <button class="secondary" onclick="document.getElementById('change-password-modal').showModal()">Change Password</button>
         </section>
 
         <footer>

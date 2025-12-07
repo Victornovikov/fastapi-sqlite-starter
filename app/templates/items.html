@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}My Items - FastAPI App{% endblock %}
+
+{% block content %}
+<hgroup>
+    <h1>My Items</h1>
+    <p>Manage your items - this is an example CRUD interface</p>
+</hgroup>
+
+<!-- Add Item Form -->
+<article>
+    <header>
+        <strong>Add New Item</strong>
+    </header>
+    
+    <form hx-post="/items/add" 
+          hx-target="#items-list" 
+          hx-swap="afterbegin"
+          hx-on::after-request="if(event.detail.successful) this.reset()">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        
+        <label for="title">
+            Title
+            <input type="text" 
+                   id="title" 
+                   name="title" 
+                   placeholder="Enter item title" 
+                   required 
+                   maxlength="200">
+        </label>
+        
+        <label for="content">
+            Content (optional)
+            <textarea id="content" 
+                      name="content" 
+                      placeholder="Enter item content..."
+                      rows="3"></textarea>
+        </label>
+        
+        <button type="submit">
+            <span class="htmx-indicator" aria-busy="true"></span>
+            Add Item
+        </button>
+    </form>
+</article>
+
+<!-- Items List -->
+<section>
+    <h2>Your Items ({{ items|length }})</h2>
+    
+    <div id="items-list">
+        {% if items %}
+            {% for item in items %}
+                {% include 'fragments/item_card.html' %}
+            {% endfor %}
+        {% else %}
+            <article id="empty-state">
+                <p style="text-align: center; color: var(--pico-muted-color);">
+                    No items yet. Add your first item above!
+                </p>
+            </article>
+        {% endif %}
+    </div>
+</section>
+
+<script>
+// Remove empty state when first item is added
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState && document.querySelectorAll('#items-list article:not(#empty-state)').length > 0) {
+        emptyState.remove();
+    }
+});
+</script>
+{% endblock %}
+

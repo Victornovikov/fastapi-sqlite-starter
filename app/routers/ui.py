@@ -9,7 +9,7 @@ import secrets
 import logging
 
 from app.database import get_session
-from app.models import User, PasswordResetToken
+from app.models import User, PasswordResetToken, Item
 from app.schemas import UserCreate
 from app.rate_limit import auth_limiter
 from app.login_manager import manager, authenticate_user, get_password_hash, get_current_user_optional
@@ -88,17 +88,34 @@ async def login_page(
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(
     request: Request,
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    session: Session = Depends(get_session)
 ):
     """Render the dashboard page for logged-in users"""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    # Get user's recent items for dashboard preview
+    recent_items = session.exec(
+        select(Item)
+        .where(Item.user_id == current_user.id)
+        .order_by(Item.created_at.desc())
+        .limit(3)
+    ).all()
+    
+    # Get total item count
+    from sqlmodel import func
+    item_count = session.exec(
+        select(func.count(Item.id)).where(Item.user_id == current_user.id)
+    ).one()
     
     return templates.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
             "user": current_user,
+            "recent_items": recent_items,
+            "item_count": item_count,
         }
     )
 

@@ -4,8 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
+    <meta name="description" content="{% block description %}A modern web application built with FastAPI, HTMX, and Pico CSS{% endblock %}">
+    <meta name="keywords" content="{% block keywords %}fastapi, web app, python{% endblock %}">
     
-    <title>{% block title %}FastAPI Auth App{% endblock %}</title>
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{% block og_title %}FastAPI App{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}A modern web application{% endblock %}">
+    <meta property="og:site_name" content="FastAPI App">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:title" content="{% block twitter_title %}FastAPI App{% endblock %}">
+    <meta property="twitter:description" content="{% block twitter_description %}A modern web application{% endblock %}">
+    
+    <title>{% block title %}FastAPI App{% endblock %}</title>
     
     <!-- Pico CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
@@ -35,21 +48,21 @@
     <header class="container">
         <nav>
             <ul>
-                <li><strong><a href="/">FastAPI Auth</a></strong></li>
+                <li><strong><a href="/">🚀 FastAPI App</a></strong></li>
             </ul>
             <ul>
                 {% if user %}
+                    <li><a href="/dashboard" title="Dashboard">📊</a></li>
+                    <li><a href="/items" title="My Items">📝</a></li>
+                    <li><a href="/profile" title="Settings">⚙️</a></li>
                     <li>
-                        <a href="/profile">
-                            {{ user.username }}
-                        </a>
-                    </li>
-                    <li>
-                        <button hx-post="/logout" class="outline">Logout</button>
+                        <form action="/logout" method="post" style="margin: 0;">
+                            <button type="submit" class="outline" style="padding: 0.5rem 1rem;">Logout</button>
+                        </form>
                     </li>
                 {% else %}
                     <li>
-                        <a href="/login" class="outline" role="button">Sign up</a>
+                        <a href="/login" class="outline" role="button">Sign In</a>
                     </li>
                 {% endif %}
             </ul>
@@ -64,8 +77,9 @@
     <!-- Footer -->
     <footer class="container">
         <small>
-            Built with <a href="https://fastapi.tiangolo.com/" target="_blank">FastAPI</a> • 
-            <a href="https://picocss.com/" target="_blank">Pico CSS</a> • 
+            © {{ current_year() }} Your App Name • Built with 
+            <a href="https://fastapi.tiangolo.com/" target="_blank">FastAPI</a>, 
+            <a href="https://picocss.com/" target="_blank">Pico CSS</a> & 
             <a href="https://htmx.org/" target="_blank">HTMX</a>
         </small>
     </footer>

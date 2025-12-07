@@ -1,5 +1,6 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
+from fastapi.responses import HTMLResponse
 from sqlmodel import Session, select
 import logging
 from app.database import get_session
@@ -7,6 +8,8 @@ from app.models import User
 from app.schemas import UserResponse, UserUpdate
 from app.login_manager import manager
 from app.logging_config import get_client_ip
+from app.security import verify_csrf
+from app.templates_config import templates
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
@@ -96,3 +99,44 @@ async def read_users(
     )
 
     return users
+
+
+@router.post("/update-profile", response_class=HTMLResponse)
+async def update_profile(
+    request: Request,
+    full_name: str = Form(...),
+    csrf: str = Form(...),
+    current_user: User = Depends(manager),
+    session: Session = Depends(get_session)
+):
+    """Update user profile information via HTMX form"""
+    client_ip = get_client_ip(request)
+
+    # Verify CSRF token
+    try:
+        verify_csrf(request, csrf)
+    except Exception as e:
+        logger.error(f"CSRF validation failed on profile update: user={current_user.email}, ip={client_ip}, error={str(e)}")
+        return HTMLResponse(
+            content='<div style="color: var(--pico-del-color);">Security validation failed. Please refresh and try again.</div>',
+            status_code=403
+        )
+
+    # Get fresh user from database
+    db_user = session.get(User, current_user.id)
+    if not db_user:
+        return HTMLResponse(
+            content='<div style="color: var(--pico-del-color);">User not found.</div>',
+            status_code=404
+        )
+
+    # Update user information
+    db_user.full_name = full_name
+    session.add(db_user)
+    session.commit()
+
+    logger.info(f"Profile updated: user={current_user.email}, ip={client_ip}")
+
+    return HTMLResponse(
+        content='<div style="color: var(--pico-ins-color);">Profile updated successfully!</div>'
+    )

@@ -9,7 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 import logging
 from app.database import create_db_and_tables
-from app.routers import auth, users, ui
+from app.routers import auth, users, ui, items
 from app import webhooks
 from app.templates_config import templates
 from app.rate_limit import auth_limiter
@@ -94,6 +94,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(ui.router)
+app.include_router(items.router)
 app.include_router(webhooks.router)
 
 

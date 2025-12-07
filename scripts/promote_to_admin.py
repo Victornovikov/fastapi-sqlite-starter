@@ -4,10 +4,10 @@ Script to promote a regular user to admin (superuser) status.
 Run this script on the server with direct database access.
 
 Usage:
-    python scripts/promote_to_admin.py <username>
+    python scripts/promote_to_admin.py <email>
     
 Example:
-    python scripts/promote_to_admin.py johndoe
+    python scripts/promote_to_admin.py admin@example.com
 """
 
 import sys
@@ -22,27 +22,27 @@ from app.database import engine
 from app.models import User
 
 
-def promote_user_to_admin(username: str) -> bool:
+def promote_user_to_admin(email: str) -> bool:
     """
     Promote a user to admin status by setting is_superuser to True.
     
     Args:
-        username: The username of the user to promote
+        email: The email of the user to promote
         
     Returns:
         True if successful, False otherwise
     """
     with Session(engine) as session:
-        # Find the user
-        statement = select(User).where(User.username == username)
+        # Find the user by email
+        statement = select(User).where(User.email == email)
         user = session.exec(statement).first()
         
         if not user:
-            print(f"❌ Error: User '{username}' not found.")
+            print(f"❌ Error: User with email '{email}' not found.")
             return False
         
         if user.is_superuser:
-            print(f"ℹ️  User '{username}' is already an admin.")
+            print(f"ℹ️  User '{email}' is already an admin.")
             return True
         
         # Promote to admin
@@ -51,7 +51,7 @@ def promote_user_to_admin(username: str) -> bool:
         session.commit()
         session.refresh(user)
         
-        print(f"✅ Successfully promoted '{username}' to admin.")
+        print(f"✅ Successfully promoted '{email}' to admin.")
         print(f"   User details:")
         print(f"   - ID: {user.id}")
         print(f"   - Email: {user.email}")
@@ -65,14 +65,14 @@ def promote_user_to_admin(username: str) -> bool:
 def main():
     """Main function to handle command line arguments."""
     if len(sys.argv) != 2:
-        print("Usage: python scripts/promote_to_admin.py <username>")
-        print("Example: python scripts/promote_to_admin.py johndoe")
+        print("Usage: python scripts/promote_to_admin.py <email>")
+        print("Example: python scripts/promote_to_admin.py admin@example.com")
         sys.exit(1)
     
-    username = sys.argv[1]
+    email = sys.argv[1]
     
     # Confirm the action
-    print(f"⚠️  WARNING: This will grant admin privileges to user '{username}'.")
+    print(f"⚠️  WARNING: This will grant admin privileges to user '{email}'.")
     response = input("Are you sure you want to continue? (yes/no): ")
     
     if response.lower() != 'yes':
@@ -87,7 +87,7 @@ def main():
         sys.exit(1)
     
     # Promote the user
-    success = promote_user_to_admin(username)
+    success = promote_user_to_admin(email)
     sys.exit(0 if success else 1)
 
 
